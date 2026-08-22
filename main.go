@@ -10,7 +10,7 @@ func main() {
 
 	http.HandleFunc("/", handlersTP.HandleIndex)
 
-	port := "0.0.0.0:8080"
+	port := ":8080"
 	fmt.Printf("Servidor escuchando en http://localhost%s\n", port)
 
 	err := http.ListenAndServe(port, nil)
