@@ -35,7 +35,7 @@ CREATE TABLE semesters (
     id_course uuid  NOT NULL,
     professor_id uuid  NOT NULL,
     year int  NOT NULL,
-    sub_token varchar(%)  NOT NULL,
+    sub_token varchar(32)  NOT NULL,
     end_date date  NOT NULL,
     CONSTRAINT toke_sub_uk UNIQUE (sub_token) NOT DEFERRABLE  INITIALLY IMMEDIATE,
     CONSTRAINT semester_pk PRIMARY KEY (id_semester)
