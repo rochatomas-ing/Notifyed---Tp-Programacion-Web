@@ -11,12 +11,12 @@ func HandleIndex(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if r.Method != http.MethodGet {
-		http.Error(w, "Método no permitido", http.StatusMethodNotAllowed)
+		http.Error(w, "Metodo no permitido", http.StatusMethodNotAllowed)
 		return
 	}
 
 	w.Header().Set("Content-Type", "text/html")
 
-	http.ServeFile(w, r, "index.html")
+	http.ServeFile(w, r, "./static/index.html")
 
 }
