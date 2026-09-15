@@ -12,7 +12,8 @@ all:
 	@set -e; \
 	trap '$(MAKE) --no-print-directory down' EXIT; \
 	$(MAKE) --no-print-directory up; \
-	$(MAKE) --no-print-directory test
+	$(MAKE) --no-print-directory test; \
+	$(MAKE) --no-print-directory clean
 
 generate:
 	@echo "Generando código con sqlc (Si ya existe es regenerado)..."
@@ -27,8 +28,8 @@ down:
 	@$(COMPOSE) down -v	
 
 build: generate
-	@mkdir -p bin
-	@go build -o bin/$(APP_NAME) .
+	@mkdir -p tmp
+	@go build -o tmp/$(APP_NAME) .
 
 test:
 	@echo "Corriendo los tests..."
@@ -36,5 +37,5 @@ test:
 
 clean:
 	@echo "Limpiando archivos generados..."
-	@rm -f $(APP_NAME)
+	@rm -f tmp/$(APP_NAME)
 	@rm -rf tmp	
