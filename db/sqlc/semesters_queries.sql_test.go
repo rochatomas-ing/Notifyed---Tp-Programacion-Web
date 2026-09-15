@@ -366,8 +366,8 @@ func TestUpdateSemesterEndDate(t *testing.T) {
 			t.Fatalf("UpdateSemesterEndDate devolvió error: %v", err)
 		}
 
-		if !got.EndDate.Truncate(24 * time.Hour).Equal(nuevaFecha.Truncate(24 * time.Hour)) {
-			t.Errorf("EndDate = %v, want %v", got.EndDate, nuevaFecha)
+		if got.EndDate.Format("2006-01-02") != nuevaFecha.Format("2006-01-02") {
+			t.Errorf("EndDate = %v, want %v", got.EndDate.Format("2006-01-02"), nuevaFecha.Format("2006-01-02"))
 		}
 		if got.SubToken != creada.SubToken {
 			t.Error("el update pisó el sub_token")
