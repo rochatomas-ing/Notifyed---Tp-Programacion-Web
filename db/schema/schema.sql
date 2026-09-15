@@ -12,10 +12,11 @@ CREATE TABLE courses (
 CREATE TABLE inscriptions (
     id_inscription uuid  NOT NULL DEFAULT gen_random_uuid(),
     id_semester uuid  NOT NULL,
-    email varchar(50)  NOT NULL,
-    active boolean  NOT NULL,
-    created_at timestamp  NOT NULL,
-    CONSTRAINT inscription_pk PRIMARY KEY (id_inscription)
+    email varchar(80)  NOT NULL,
+    active boolean  NOT NULL DEFAULT true,
+    created_at timestamp  NOT NULL DEFAULT now(),
+    CONSTRAINT inscription_pk PRIMARY KEY (id_inscription),
+    CONSTRAINT inscription_email_uk UNIQUE (email, id_semester) NOT DEFERRABLE INITIALLY IMMEDIATE
 );
 
 -- Table: notices
@@ -25,7 +26,7 @@ CREATE TABLE notices (
     id_sender uuid  NOT NULL,
     title varchar(255)  NOT NULL,
     message text  NOT NULL,
-    created_at timestamp  NOT NULL,
+    created_at timestamp  NOT NULL DEFAULT now(),
     CONSTRAINT notice_pk PRIMARY KEY (id_notice)
 );
 
@@ -45,8 +46,8 @@ CREATE TABLE semesters (
 CREATE TABLE users (
     id_user uuid  NOT NULL DEFAULT gen_random_uuid(),
     fullname varchar(50)  NOT NULL,
-    email varchar(50)  NOT NULL,
-    password_hash varchar(30)  NOT NULL,
+    email varchar(80)  NOT NULL,
+    password_hash varchar(255)  NOT NULL,
     CONSTRAINT email_uk UNIQUE (email) NOT DEFERRABLE  INITIALLY IMMEDIATE,
     CONSTRAINT user_pk PRIMARY KEY (id_user)
 );
@@ -55,7 +56,7 @@ CREATE TABLE users (
 -- Reference: inscription_semester (table: inscription)
 ALTER TABLE inscriptions ADD CONSTRAINT inscription_semester
     FOREIGN KEY (id_semester)
-    REFERENCES semester (id_semester)  
+    REFERENCES semesters (id_semester)  
     NOT DEFERRABLE 
     INITIALLY IMMEDIATE
 ;
@@ -63,7 +64,7 @@ ALTER TABLE inscriptions ADD CONSTRAINT inscription_semester
 -- Reference: notice_semester (table: notice)
 ALTER TABLE notices ADD CONSTRAINT notice_semester
     FOREIGN KEY (id_semester)
-    REFERENCES semester (id_semester)  
+    REFERENCES semesters (id_semester)  
     NOT DEFERRABLE 
     INITIALLY IMMEDIATE
 ;
@@ -79,7 +80,7 @@ ALTER TABLE notices ADD CONSTRAINT notice_user
 -- Reference: semester_course (table: semester)
 ALTER TABLE semesters ADD CONSTRAINT semester_course
     FOREIGN KEY (id_course)
-    REFERENCES course (id_course)  
+    REFERENCES courses (id_course)  
     NOT DEFERRABLE 
     INITIALLY IMMEDIATE
 ;
