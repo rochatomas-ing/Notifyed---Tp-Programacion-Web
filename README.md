@@ -16,4 +16,4 @@
 ### make
 
 
-[Documentacion:](https://docs.google.com/document/d/14D9cFFU1qXDRc5G7Rvl9kUP221paD0Ow21wZxIRfTSE/edit?usp=sharing)
+[Documentacion de la Base de Datos](https://docs.google.com/document/d/14D9cFFU1qXDRc5G7Rvl9kUP221paD0Ow21wZxIRfTSE/edit?usp=sharing)
