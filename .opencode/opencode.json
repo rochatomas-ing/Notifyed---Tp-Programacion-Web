@@ -1,0 +1,16 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "instructions": ["AGENTS.md"],
+  "model": "google/gemini-3.6-flash",
+  "small_model": "google/gemini-3.5-flash-lite",
+  "permission": {
+    "bash": {
+      "*": "ask",
+      "go *": "allow",
+      "make *": "allow",
+      "docker compose *": "allow",
+      "docker-compose *": "allow",
+      "sqlc *": "allow"
+    }
+  }
+}
