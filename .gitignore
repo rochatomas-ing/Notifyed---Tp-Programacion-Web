@@ -1,1 +1,8 @@
 .env
+
+# Backups locales: no se suben a git ni a GitHub
+notifyed-contexto/
+.docs/
+
+# Artefactos de build
+tmp/
