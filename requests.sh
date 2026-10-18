@@ -3,7 +3,7 @@
 #
 # Uso:
 #   1. Levantar la base:            make up
-#   2. Levantar el server:          go run .        (en otra terminal)
+#   2. Levantar el server:          make run      (en otra terminal)
 #   3. Cargar los datos de prueba:  bash seed.sh
 #   4. Correr las pruebas:          bash requests.sh
 #

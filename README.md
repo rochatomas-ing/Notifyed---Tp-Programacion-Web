@@ -52,8 +52,10 @@ make test    # corre los tests de queries
 
 ```bash
 make up      # base de datos en Docker
-go run .     # servidor en http://localhost:8080
+make run     # servidor en http://localhost:8080
 ```
+
+> `make run` (y no `go run .`) porque el Makefile es el que exporta las variables de conexión (`DB_HOST`, `DB_USER`...) a partir del `.env`.
 
 ## Datos de prueba y pruebas de la API
 
@@ -70,7 +72,7 @@ Flujo recomendado de punta a punta:
 ```bash
 make up
 bash seed.sh
-go run .            # en otra terminal
+make run            # en otra terminal
 bash requests.sh
 ```
 
