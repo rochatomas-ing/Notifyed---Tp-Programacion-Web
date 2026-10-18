@@ -6,6 +6,7 @@ import (
 	db "servidor-NotifyEd/db/sqlc"
 	dbconn "servidor-NotifyEd/db_conn"
 	"servidor-NotifyEd/handlersTP"
+	"servidor-NotifyEd/service"
 )
 
 func main() {
@@ -16,8 +17,12 @@ func main() {
 	}
 	defer conn.Close()
 
-	db.New(conn)
+	queries := db.New(conn)
 	mux := http.NewServeMux()
+	courses := service.NewCourseService(queries)
+	semesters := service.NewSemesterService(queries)
+	handlersTP.RegisterCourseRoutes(mux, courses, semesters)
+	handlersTP.RegisterSemesterRoutes(mux, semesters)
 	mux.HandleFunc("GET /health", func(w http.ResponseWriter, r *http.Request) {
 		if err := conn.PingContext(r.Context()); err != nil {
 			http.Error(w, "database unavailable", http.StatusServiceUnavailable)
