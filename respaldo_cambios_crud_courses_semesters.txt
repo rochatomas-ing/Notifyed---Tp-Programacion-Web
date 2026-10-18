@@ -1,0 +1,648 @@
+RESPALDO DE CAMBIOS — CRUD COURSES Y SEMESTERS
+Fecha: 2026-10-17
+
+Este archivo guarda el contenido actual de los archivos modificados o creados para este trabajo. No es un patch automático: para restaurar un archivo, copiar su contenido desde la sección correspondiente a la ruta indicada.
+
+ALCANCE IMPLEMENTADO
+- Cursos: GET/POST /courses; GET/PUT/DELETE /courses/{id}; GET /courses/{id}/semesters.
+- Cursadas: POST /semesters; GET /semesters/{id} o /semesters/{sub_token}; PUT/DELETE /semesters/{id}; GET /profesores/{id}/semesters.
+- Servicios separados para validación/orquestación de courses y semesters.
+- Utilidades HTTP JSON para decodificación estricta y mapeo de errores.
+- Users queda fuera de esta sesión. No se registran rutas ni servicios CRUD de Users.
+
+============================================================
+ARCHIVO: main.go
+============================================================
+package main
+
+import (
+	"fmt"
+	"net/http"
+	db "servidor-NotifyEd/db/sqlc"
+	dbconn "servidor-NotifyEd/db_conn"
+	"servidor-NotifyEd/handlersTP"
+	"servidor-NotifyEd/service"
+)
+
+func main() {
+	conn, err := dbconn.Connect()
+	if err != nil {
+		fmt.Printf("Error al conectar con la base de datos: %s\n", err)
+		return
+	}
+	defer conn.Close()
+
+	queries := db.New(conn)
+	mux := http.NewServeMux()
+	courses := service.NewCourseService(queries)
+	semesters := service.NewSemesterService(queries)
+	handlersTP.RegisterCourseRoutes(mux, courses, semesters)
+	handlersTP.RegisterSemesterRoutes(mux, semesters)
+	mux.HandleFunc("GET /health", func(w http.ResponseWriter, r *http.Request) {
+		if err := conn.PingContext(r.Context()); err != nil {
+			http.Error(w, "database unavailable", http.StatusServiceUnavailable)
+			return
+		}
+		w.WriteHeader(http.StatusOK)
+	})
+	mux.HandleFunc("/", handlersTP.HandleIndex)
+
+	port := ":8080"
+	fmt.Printf("Servidor escuchando en http://localhost%s\n", port)
+
+	err = http.ListenAndServe(port, mux)
+	if err != nil {
+		fmt.Printf("Error al iniciar el servidor: %s\n", err)
+	}
+}
+
+============================================================
+ARCHIVO: handlersTP/httputil.go
+============================================================
+package handlersTP
+
+import (
+	"database/sql"
+	"encoding/json"
+	"errors"
+	"io"
+	"log"
+	"net/http"
+	"strings"
+
+	"github.com/google/uuid"
+	"servidor-NotifyEd/service"
+)
+
+func WriteJSON(w http.ResponseWriter, statusCode int, data any) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(statusCode)
+	json.NewEncoder(w).Encode(data)
+}
+
+func HandleError(w http.ResponseWriter, statusCode int, message string) {
+	WriteJSON(w, statusCode, map[string]string{"error": message})
+}
+
+func DecodeJSON(w http.ResponseWriter, r *http.Request, destination any) bool {
+	r.Body = http.MaxBytesReader(w, r.Body, 1<<20)
+	decoder := json.NewDecoder(r.Body)
+	decoder.DisallowUnknownFields()
+	if err := decoder.Decode(destination); err != nil {
+		HandleError(w, http.StatusBadRequest, "el cuerpo debe contener JSON válido")
+		return false
+	}
+	var extra any
+	if err := decoder.Decode(&extra); !errors.Is(err, io.EOF) {
+		HandleError(w, http.StatusBadRequest, "el cuerpo debe contener un único objeto JSON")
+		return false
+	}
+	return true
+}
+
+func HandleServiceError(w http.ResponseWriter, err error) {
+	switch {
+	case errors.Is(err, sql.ErrNoRows):
+		HandleError(w, http.StatusNotFound, "recurso no encontrado")
+	case errors.Is(err, service.ErrInvalidInput):
+		HandleError(w, http.StatusBadRequest, err.Error())
+	case errors.Is(err, service.ErrConflict):
+		HandleError(w, http.StatusConflict, "el recurso entra en conflicto con datos existentes o relacionados")
+	default:
+		log.Printf("Error interno de servicio: %v", err)
+		HandleError(w, http.StatusInternalServerError, "error interno del servidor")
+	}
+}
+
+// ParseUUID extrae el segmento de la ruta que sigue al prefijo (por ejemplo
+// "/notices/" en /notices/{id}) y lo parsea como UUID. Si el segmento no es un
+// UUID válido devuelve error y el handler decide responder 400.
+func ParseUUID(r *http.Request, prefix string) (uuid.UUID, error) {
+	value := strings.TrimPrefix(r.URL.Path, prefix)
+	return uuid.Parse(value)
+}
+
+func ParsePathUUID(w http.ResponseWriter, r *http.Request, key string) (uuid.UUID, bool) {
+	id, err := uuid.Parse(r.PathValue(key))
+	if err != nil {
+		HandleError(w, http.StatusBadRequest, "el identificador debe ser un UUID válido")
+		return uuid.Nil, false
+	}
+	return id, true
+}
+
+============================================================
+ARCHIVO: handlersTP/coursesHandler.go (nuevo)
+============================================================
+package handlersTP
+
+import (
+	"context"
+	"net/http"
+
+	db "servidor-NotifyEd/db/sqlc"
+	"servidor-NotifyEd/service"
+
+	"github.com/google/uuid"
+)
+
+type courseService interface {
+	Create(ctx context.Context, name string) (db.Course, error)
+	Get(ctx context.Context, id uuid.UUID) (db.Course, error)
+	List(ctx context.Context) ([]db.Course, error)
+	UpdateName(ctx context.Context, id uuid.UUID, name string) (db.Course, error)
+	Delete(ctx context.Context, id uuid.UUID) error
+}
+
+func RegisterCourseRoutes(mux *http.ServeMux, courses *service.CourseService, semesters *service.SemesterService) {
+	mux.HandleFunc("/courses", coursesCollectionHandler(courses))
+	mux.HandleFunc("/courses/{id}", courseHandler(courses))
+	mux.HandleFunc("/courses/{id}/semesters", courseSemestersHandler(semesters))
+}
+
+func coursesCollectionHandler(courses courseService) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		switch r.Method {
+		case http.MethodGet:
+			result, err := courses.List(r.Context())
+			if err != nil {
+				HandleServiceError(w, err)
+				return
+			}
+			WriteJSON(w, http.StatusOK, result)
+		case http.MethodPost:
+			var request struct {
+				Name string `json:"name"`
+			}
+			if !DecodeJSON(w, r, &request) {
+				return
+			}
+			result, err := courses.Create(r.Context(), request.Name)
+			if err != nil {
+				HandleServiceError(w, err)
+				return
+			}
+			WriteJSON(w, http.StatusCreated, result)
+		default:
+			HandleError(w, http.StatusMethodNotAllowed, "método no permitido")
+		}
+	}
+}
+
+func courseHandler(courses courseService) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		id, ok := ParsePathUUID(w, r, "id")
+		if !ok {
+			return
+		}
+		switch r.Method {
+		case http.MethodGet:
+			result, err := courses.Get(r.Context(), id)
+			if err != nil {
+				HandleServiceError(w, err)
+				return
+			}
+			WriteJSON(w, http.StatusOK, result)
+		case http.MethodPut:
+			var request struct {
+				Name string `json:"name"`
+			}
+			if !DecodeJSON(w, r, &request) {
+				return
+			}
+			result, err := courses.UpdateName(r.Context(), id, request.Name)
+			if err != nil {
+				HandleServiceError(w, err)
+				return
+			}
+			WriteJSON(w, http.StatusOK, result)
+		case http.MethodDelete:
+			if err := courses.Delete(r.Context(), id); err != nil {
+				HandleServiceError(w, err)
+				return
+			}
+			w.WriteHeader(http.StatusNoContent)
+		default:
+			HandleError(w, http.StatusMethodNotAllowed, "método no permitido")
+		}
+	}
+}
+
+func courseSemestersHandler(semesters interface {
+	ListByCourse(context.Context, uuid.UUID) ([]db.Semester, error)
+}) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			HandleError(w, http.StatusMethodNotAllowed, "método no permitido")
+			return
+		}
+		id, ok := ParsePathUUID(w, r, "id")
+		if !ok {
+			return
+		}
+		result, err := semesters.ListByCourse(r.Context(), id)
+		if err != nil {
+			HandleServiceError(w, err)
+			return
+		}
+		WriteJSON(w, http.StatusOK, result)
+	}
+}
+
+============================================================
+ARCHIVO: handlersTP/semestersHandler.go (nuevo)
+============================================================
+package handlersTP
+
+import (
+	"context"
+	"net/http"
+	"time"
+
+	db "servidor-NotifyEd/db/sqlc"
+	"servidor-NotifyEd/service"
+
+	"github.com/google/uuid"
+)
+
+type semesterService interface {
+	Create(context.Context, db.CreateSemesterParams) (db.Semester, error)
+	Get(context.Context, uuid.UUID) (db.Semester, error)
+	GetByToken(context.Context, string) (db.GetSemesterByTokenRow, error)
+	ListByProfessor(context.Context, uuid.UUID) ([]db.ListSemestersByProfessorRow, error)
+	UpdateEndDate(context.Context, uuid.UUID, time.Time) (db.Semester, error)
+	Delete(context.Context, uuid.UUID) error
+}
+
+type semesterCreateRequest struct {
+	IDCourse    uuid.UUID `json:"id_course"`
+	ProfessorID uuid.UUID `json:"professor_id"`
+	Year        int32     `json:"year"`
+	SubToken    string    `json:"sub_token"`
+	EndDate     string    `json:"end_date"`
+}
+
+type semesterUpdateRequest struct {
+	EndDate string `json:"end_date"`
+}
+
+func RegisterSemesterRoutes(mux *http.ServeMux, semesters *service.SemesterService) {
+	mux.HandleFunc("/semesters", semestersCollectionHandler(semesters))
+	mux.HandleFunc("/semesters/{idOrToken}", semesterHandler(semesters))
+	mux.HandleFunc("/profesores/{id}/semesters", professorSemestersHandler(semesters))
+}
+
+func semestersCollectionHandler(semesters semesterService) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		switch r.Method {
+		case http.MethodPost:
+			var request semesterCreateRequest
+			if !DecodeJSON(w, r, &request) {
+				return
+			}
+			endDate, err := time.Parse("2006-01-02", request.EndDate)
+			if err != nil {
+				HandleError(w, http.StatusBadRequest, "end_date debe tener formato YYYY-MM-DD")
+				return
+			}
+			result, err := semesters.Create(r.Context(), db.CreateSemesterParams{
+				IDCourse: request.IDCourse, ProfessorID: request.ProfessorID,
+				Year: request.Year, SubToken: request.SubToken, EndDate: endDate,
+			})
+			if err != nil {
+				HandleServiceError(w, err)
+				return
+			}
+			WriteJSON(w, http.StatusCreated, result)
+		case http.MethodGet:
+			professorID, err := uuid.Parse(r.URL.Query().Get("professor_id"))
+			if err != nil {
+				HandleError(w, http.StatusBadRequest, "se requiere un professor_id UUID válido para listar cursadas")
+				return
+			}
+			result, err := semesters.ListByProfessor(r.Context(), professorID)
+			if err != nil {
+				HandleServiceError(w, err)
+				return
+			}
+			WriteJSON(w, http.StatusOK, result)
+		default:
+			HandleError(w, http.StatusMethodNotAllowed, "método no permitido")
+		}
+	}
+}
+
+func semesterHandler(semesters semesterService) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		identifier := r.PathValue("idOrToken")
+		switch r.Method {
+		case http.MethodGet:
+			if id, err := uuid.Parse(identifier); err == nil {
+				result, err := semesters.Get(r.Context(), id)
+				if err != nil {
+					HandleServiceError(w, err)
+					return
+				}
+				WriteJSON(w, http.StatusOK, result)
+				return
+			}
+			result, err := semesters.GetByToken(r.Context(), identifier)
+			if err != nil {
+				HandleServiceError(w, err)
+				return
+			}
+			WriteJSON(w, http.StatusOK, result)
+		case http.MethodPut, http.MethodDelete:
+			id, err := uuid.Parse(identifier)
+			if err != nil {
+				HandleError(w, http.StatusBadRequest, "el identificador debe ser un UUID válido")
+				return
+			}
+			if r.Method == http.MethodDelete {
+				if err := semesters.Delete(r.Context(), id); err != nil {
+					HandleServiceError(w, err)
+					return
+				}
+				w.WriteHeader(http.StatusNoContent)
+				return
+			}
+			var request semesterUpdateRequest
+			if !DecodeJSON(w, r, &request) {
+				return
+			}
+			endDate, err := time.Parse("2006-01-02", request.EndDate)
+			if err != nil {
+				HandleError(w, http.StatusBadRequest, "end_date debe tener formato YYYY-MM-DD")
+				return
+			}
+			result, err := semesters.UpdateEndDate(r.Context(), id, endDate)
+			if err != nil {
+				HandleServiceError(w, err)
+				return
+			}
+			WriteJSON(w, http.StatusOK, result)
+		default:
+			HandleError(w, http.StatusMethodNotAllowed, "método no permitido")
+		}
+	}
+}
+
+func professorSemestersHandler(semesters semesterService) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			HandleError(w, http.StatusMethodNotAllowed, "método no permitido")
+			return
+		}
+		id, ok := ParsePathUUID(w, r, "id")
+		if !ok {
+			return
+		}
+		result, err := semesters.ListByProfessor(r.Context(), id)
+		if err != nil {
+			HandleServiceError(w, err)
+			return
+		}
+		WriteJSON(w, http.StatusOK, result)
+	}
+}
+
+============================================================
+ARCHIVO: service/courses.go (nuevo)
+============================================================
+package service
+
+import (
+	"context"
+	"database/sql"
+	"fmt"
+	"strings"
+
+	db "servidor-NotifyEd/db/sqlc"
+
+	"github.com/google/uuid"
+)
+
+type CourseQueries interface {
+	CreateCourse(context.Context, string) (db.Course, error)
+	GetCourseById(context.Context, uuid.UUID) (db.Course, error)
+	ListCourses(context.Context) ([]db.Course, error)
+	UpdateCourseName(context.Context, db.UpdateCourseNameParams) (db.Course, error)
+	DeleteCourse(context.Context, uuid.UUID) (int64, error)
+}
+
+type CourseService struct {
+	queries CourseQueries
+}
+
+func NewCourseService(queries CourseQueries) *CourseService {
+	return &CourseService{queries: queries}
+}
+
+func (s *CourseService) Create(ctx context.Context, name string) (db.Course, error) {
+	name = strings.TrimSpace(name)
+	if name == "" || len([]rune(name)) > 40 {
+		return db.Course{}, fmt.Errorf("%w: el nombre de la materia es obligatorio y debe tener hasta 40 caracteres", ErrInvalidInput)
+	}
+	course, err := s.queries.CreateCourse(ctx, name)
+	if err != nil {
+		return db.Course{}, mapDatabaseError(err)
+	}
+	return course, nil
+}
+
+func (s *CourseService) Get(ctx context.Context, id uuid.UUID) (db.Course, error) {
+	return s.queries.GetCourseById(ctx, id)
+}
+
+func (s *CourseService) List(ctx context.Context) ([]db.Course, error) {
+	courses, err := s.queries.ListCourses(ctx)
+	if courses == nil && err == nil {
+		courses = []db.Course{}
+	}
+	return courses, err
+}
+
+func (s *CourseService) UpdateName(ctx context.Context, id uuid.UUID, name string) (db.Course, error) {
+	name = strings.TrimSpace(name)
+	if name == "" || len([]rune(name)) > 40 {
+		return db.Course{}, fmt.Errorf("%w: el nombre de la materia es obligatorio y debe tener hasta 40 caracteres", ErrInvalidInput)
+	}
+	course, err := s.queries.UpdateCourseName(ctx, db.UpdateCourseNameParams{IDCourse: id, Name: name})
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return db.Course{}, err
+		}
+		return db.Course{}, mapDatabaseError(err)
+	}
+	return course, nil
+}
+
+func (s *CourseService) Delete(ctx context.Context, id uuid.UUID) error {
+	rowsAffected, err := s.queries.DeleteCourse(ctx, id)
+	if err != nil {
+		return mapDatabaseError(err)
+	}
+	if rowsAffected == 0 {
+		return sql.ErrNoRows
+	}
+	return nil
+}
+
+============================================================
+ARCHIVO: service/semesters.go (nuevo)
+============================================================
+package service
+
+import (
+	"context"
+	"crypto/rand"
+	"database/sql"
+	"encoding/base64"
+	"fmt"
+	"strings"
+	"time"
+
+	db "servidor-NotifyEd/db/sqlc"
+
+	"github.com/google/uuid"
+)
+
+type SemesterQueries interface {
+	CreateSemester(context.Context, db.CreateSemesterParams) (db.Semester, error)
+	GetSemesterById(context.Context, uuid.UUID) (db.Semester, error)
+	GetSemesterByToken(context.Context, string) (db.GetSemesterByTokenRow, error)
+	ListSemestersByProfessor(context.Context, uuid.UUID) ([]db.ListSemestersByProfessorRow, error)
+	ListSemestersByCourse(context.Context, uuid.UUID) ([]db.Semester, error)
+	UpdateSemesterEndDate(context.Context, db.UpdateSemesterEndDateParams) (db.Semester, error)
+	DeleteSemester(context.Context, uuid.UUID) (int64, error)
+}
+
+type SemesterService struct {
+	queries SemesterQueries
+}
+
+func NewSemesterService(queries SemesterQueries) *SemesterService {
+	return &SemesterService{queries: queries}
+}
+
+func (s *SemesterService) Create(ctx context.Context, params db.CreateSemesterParams) (db.Semester, error) {
+	if params.IDCourse == uuid.Nil || params.ProfessorID == uuid.Nil || params.Year <= 0 {
+		return db.Semester{}, fmt.Errorf("%w: materia, profesor y año son obligatorios", ErrInvalidInput)
+	}
+	if params.EndDate.IsZero() {
+		return db.Semester{}, fmt.Errorf("%w: la fecha de cierre es obligatoria", ErrInvalidInput)
+	}
+	if strings.TrimSpace(params.SubToken) == "" {
+		tokenBytes := make([]byte, 16)
+		if _, err := rand.Read(tokenBytes); err != nil {
+			return db.Semester{}, fmt.Errorf("generar token de suscripción: %w", err)
+		}
+		params.SubToken = base64.RawURLEncoding.EncodeToString(tokenBytes)
+	} else {
+		params.SubToken = strings.TrimSpace(params.SubToken)
+		if len(params.SubToken) > 32 {
+			return db.Semester{}, fmt.Errorf("%w: el token admite hasta 32 caracteres", ErrInvalidInput)
+		}
+	}
+	semester, err := s.queries.CreateSemester(ctx, params)
+	if err != nil {
+		return db.Semester{}, mapDatabaseError(err)
+	}
+	return semester, nil
+}
+
+func (s *SemesterService) Get(ctx context.Context, id uuid.UUID) (db.Semester, error) {
+	return s.queries.GetSemesterById(ctx, id)
+}
+
+func (s *SemesterService) GetByToken(ctx context.Context, token string) (db.GetSemesterByTokenRow, error) {
+	return s.queries.GetSemesterByToken(ctx, token)
+}
+
+func (s *SemesterService) ListByProfessor(ctx context.Context, professorID uuid.UUID) ([]db.ListSemestersByProfessorRow, error) {
+	semesters, err := s.queries.ListSemestersByProfessor(ctx, professorID)
+	if semesters == nil && err == nil {
+		semesters = []db.ListSemestersByProfessorRow{}
+	}
+	return semesters, err
+}
+
+func (s *SemesterService) ListByCourse(ctx context.Context, courseID uuid.UUID) ([]db.Semester, error) {
+	semesters, err := s.queries.ListSemestersByCourse(ctx, courseID)
+	if semesters == nil && err == nil {
+		semesters = []db.Semester{}
+	}
+	return semesters, err
+}
+
+func (s *SemesterService) UpdateEndDate(ctx context.Context, id uuid.UUID, endDate time.Time) (db.Semester, error) {
+	if endDate.IsZero() {
+		return db.Semester{}, fmt.Errorf("%w: la fecha de cierre es obligatoria", ErrInvalidInput)
+	}
+	semester, err := s.queries.UpdateSemesterEndDate(ctx, db.UpdateSemesterEndDateParams{IDSemester: id, EndDate: endDate})
+	if err != nil {
+		return db.Semester{}, err
+	}
+	return semester, nil
+}
+
+func (s *SemesterService) Delete(ctx context.Context, id uuid.UUID) error {
+	rowsAffected, err := s.queries.DeleteSemester(ctx, id)
+	if err != nil {
+		return mapDatabaseError(err)
+	}
+	if rowsAffected == 0 {
+		return sql.ErrNoRows
+	}
+	return nil
+}
+
+============================================================
+ARCHIVO: service/errors.go (nuevo)
+============================================================
+package service
+
+import (
+	"errors"
+	"fmt"
+
+	"github.com/lib/pq"
+)
+
+var (
+	ErrInvalidInput = errors.New("datos de entrada inválidos")
+	ErrConflict     = errors.New("conflicto con un recurso existente o relacionado")
+)
+
+func mapDatabaseError(err error) error {
+	var postgresError *pq.Error
+	if errors.As(err, &postgresError) {
+		switch postgresError.Code {
+		case "23505", "23503": // UNIQUE o FK: clave duplicada o recurso relacionado.
+			return fmt.Errorf("%w: %s", ErrConflict, postgresError.Constraint)
+		}
+	}
+	return err
+}
+
+============================================================
+ARCHIVO: dto/usersDTO.go (placeholder, Users fuera del alcance)
+============================================================
+package dto
+
+============================================================
+ARCHIVO: middleware/logging.go (placeholder existente, actualmente package)
+============================================================
+package middleware
+
+============================================================
+ARCHIVO: service/notices.go (placeholder existente, actualmente package)
+============================================================
+package service
+
+============================================================
+NOTAS
+============================================================
+- Los tipos y queries de db/sqlc se consumen sin editarlos; sqlc es código generado.
+- Las pruebas de db/sqlc no se validaron en esta sesión porque el TEST_DB_URL disponible estaba sin sustituir con variables reales de entorno. La comprobación de paquetes de aplicación se intentó por separado, pero se canceló antes de ejecutarse completamente.
+- El archivo de respaldo refleja el contenido leído al momento de crearlo. Si se hacen cambios después, actualizar también este respaldo.
