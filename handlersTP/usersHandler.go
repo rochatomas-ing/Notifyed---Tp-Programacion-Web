@@ -1,10 +1,13 @@
 package handlersTP
 
 import (
+	"database/sql"
+	"errors"
 	"net/http"
 	"net/mail"
 
 	db "servidor-NotifyEd/db/sqlc"
+	"servidor-NotifyEd/dto"
 
 	"golang.org/x/crypto/bcrypt"
 )
@@ -82,7 +85,11 @@ func createUser(users *db.Queries, w http.ResponseWriter, r *http.Request) {
 	//Valido que el email no este registrado
 	_, err := users.GetUserByEmail(r.Context(), req.Email)
 	if err == nil {
-		HandleError(w, http.StatusBadRequest, "email ya registrado")
+		HandleError(w, http.StatusConflict, "el email ya está registrado")
+		return
+	}
+	if !errors.Is(err, sql.ErrNoRows) {
+		HandleError(w, http.StatusInternalServerError, "error al verificar el email")
 		return
 	}
 
@@ -105,7 +112,9 @@ func createUser(users *db.Queries, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	WriteJSON(w, http.StatusCreated, usuario)
+	// La respuesta va como UserDTO: el model de sqlc incluye password_hash
+	// y nunca debe salir por la API.
+	WriteJSON(w, http.StatusCreated, dto.ToUserDTO(usuario.IDUser, usuario.Fullname, usuario.Email))
 
 }
 
@@ -136,11 +145,15 @@ func getUser(users *db.Queries, w http.ResponseWriter, r *http.Request) {
 
 	usuario, err := users.GetUserById(ctx, id)
 	if err != nil {
-		HandleError(w, http.StatusNotFound, "usuario no encontrado")
+		if errors.Is(err, sql.ErrNoRows) {
+			HandleError(w, http.StatusNotFound, "usuario no encontrado")
+			return
+		}
+		HandleError(w, http.StatusInternalServerError, "error al obtener usuario")
 		return
 	}
 
-	WriteJSON(w, http.StatusOK, usuario)
+	WriteJSON(w, http.StatusOK, dto.ToUserDTO(usuario.IDUser, usuario.Fullname, usuario.Email))
 }
 
 func updateUser(users *db.Queries, w http.ResponseWriter, r *http.Request) {
@@ -168,11 +181,15 @@ func updateUser(users *db.Queries, w http.ResponseWriter, r *http.Request) {
 	})
 
 	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			HandleError(w, http.StatusNotFound, "usuario no encontrado")
+			return
+		}
 		HandleError(w, http.StatusInternalServerError, "error al actualizar usuario")
 		return
 	}
 
-	WriteJSON(w, http.StatusOK, usuario)
+	WriteJSON(w, http.StatusOK, dto.ToUserDTO(usuario.IDUser, usuario.Fullname, usuario.Email))
 }
 
 func deleteUser(users *db.Queries, w http.ResponseWriter, r *http.Request) {
