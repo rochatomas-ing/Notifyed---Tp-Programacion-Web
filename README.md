@@ -94,8 +94,7 @@ Reglas generales: siempre JSON (también los errores: `{"error": "..."}`),
 ## Tests
 
 ```bash
-go test ./service/      # tests unitarios de la lógica de negocio (sin base ni HTTP)
-make test               # tests de queries sqlc contra PostgreSQL real
+make test   # tests de queries sqlc contra PostgreSQL real
 ```
 
 > Los tests de queries esperan la base **vacía**. Si ya corriste `seed.sh`,
