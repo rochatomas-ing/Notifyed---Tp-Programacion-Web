@@ -28,29 +28,37 @@ func coursesCollectionHandler(courses courseService) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
 		case http.MethodGet:
-			result, err := courses.List(r.Context())
-			if err != nil {
-				HandleServiceError(w, err)
-				return
-			}
-			WriteJSON(w, http.StatusOK, result)
+			listCourses(courses, w, r)
 		case http.MethodPost:
-			var request struct {
-				Name string `json:"name"`
-			}
-			if !DecodeJSON(w, r, &request) {
-				return
-			}
-			result, err := courses.Create(r.Context(), request.Name)
-			if err != nil {
-				HandleServiceError(w, err)
-				return
-			}
-			WriteJSON(w, http.StatusCreated, result)
+			createCourse(courses, w, r)
 		default:
 			HandleError(w, http.StatusMethodNotAllowed, "método no permitido")
 		}
 	}
+}
+
+func listCourses(courses courseService, w http.ResponseWriter, r *http.Request) {
+	result, err := courses.List(r.Context())
+	if err != nil {
+		HandleServiceError(w, err)
+		return
+	}
+	WriteJSON(w, http.StatusOK, result)
+}
+
+func createCourse(courses courseService, w http.ResponseWriter, r *http.Request) {
+	var request struct {
+		Name string `json:"name"`
+	}
+	if !DecodeJSON(w, r, &request) {
+		return
+	}
+	result, err := courses.Create(r.Context(), request.Name)
+	if err != nil {
+		HandleServiceError(w, err)
+		return
+	}
+	WriteJSON(w, http.StatusCreated, result)
 }
 
 func courseHandler(courses courseService) http.HandlerFunc {
@@ -61,35 +69,47 @@ func courseHandler(courses courseService) http.HandlerFunc {
 		}
 		switch r.Method {
 		case http.MethodGet:
-			result, err := courses.Get(r.Context(), id)
-			if err != nil {
-				HandleServiceError(w, err)
-				return
-			}
-			WriteJSON(w, http.StatusOK, result)
+			getCourse(courses, w, r, id)
 		case http.MethodPut:
-			var request struct {
-				Name string `json:"name"`
-			}
-			if !DecodeJSON(w, r, &request) {
-				return
-			}
-			result, err := courses.UpdateName(r.Context(), id, request.Name)
-			if err != nil {
-				HandleServiceError(w, err)
-				return
-			}
-			WriteJSON(w, http.StatusOK, result)
+			updateCourse(courses, w, r, id)
 		case http.MethodDelete:
-			if err := courses.Delete(r.Context(), id); err != nil {
-				HandleServiceError(w, err)
-				return
-			}
-			w.WriteHeader(http.StatusNoContent)
+			deleteCourse(courses, w, r, id)
 		default:
 			HandleError(w, http.StatusMethodNotAllowed, "método no permitido")
 		}
 	}
+}
+
+func getCourse(courses courseService, w http.ResponseWriter, r *http.Request, id uuid.UUID) {
+	result, err := courses.Get(r.Context(), id)
+	if err != nil {
+		HandleServiceError(w, err)
+		return
+	}
+	WriteJSON(w, http.StatusOK, result)
+}
+
+func updateCourse(courses courseService, w http.ResponseWriter, r *http.Request, id uuid.UUID) {
+	var request struct {
+		Name string `json:"name"`
+	}
+	if !DecodeJSON(w, r, &request) {
+		return
+	}
+	result, err := courses.UpdateName(r.Context(), id, request.Name)
+	if err != nil {
+		HandleServiceError(w, err)
+		return
+	}
+	WriteJSON(w, http.StatusOK, result)
+}
+
+func deleteCourse(courses courseService, w http.ResponseWriter, r *http.Request, id uuid.UUID) {
+	if err := courses.Delete(r.Context(), id); err != nil {
+		HandleServiceError(w, err)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
 }
 
 func courseSemestersHandler(semesters interface {
@@ -104,11 +124,17 @@ func courseSemestersHandler(semesters interface {
 		if !ok {
 			return
 		}
-		result, err := semesters.ListByCourse(r.Context(), id)
-		if err != nil {
-			HandleServiceError(w, err)
-			return
-		}
-		WriteJSON(w, http.StatusOK, result)
+		listCourseSemesters(semesters, w, r, id)
 	}
+}
+
+func listCourseSemesters(semesters interface {
+	ListByCourse(context.Context, uuid.UUID) ([]db.Semester, error)
+}, w http.ResponseWriter, r *http.Request, id uuid.UUID) {
+	result, err := semesters.ListByCourse(r.Context(), id)
+	if err != nil {
+		HandleServiceError(w, err)
+		return
+	}
+	WriteJSON(w, http.StatusOK, result)
 }
