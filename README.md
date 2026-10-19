@@ -15,37 +15,40 @@ servido por el mismo servidor.
 | Herramienta | Para qué |
 | --- | --- |
 | Docker + Docker Compose | Camino recomendado: levanta base y servidor sin instalar nada más |
+| make | Correr los atajos del paso a paso (`make up-all`, `make test`, `make down`, …) |
 | curl | Ejecutar `requests.sh` (pruebas de la API) |
 | Go 1.22 o superior | Sólo para correr el servidor localmente (`make run`) o los tests |
 | sqlc 1.31 + | Sólo para regenerar `db/sqlc/` (`make generate`); el código generado ya está commiteado |
 
-## Puesta en marcha en 3 pasos (Docker)
+## Puesta en marcha paso a paso (Docker)
 
 ```bash
+# 1. Clonar y preparar (una sola vez)
 git clone https://github.com/rochatomas-ing/Notifyed---Tp-Programacion-Web.git
 cd Notifyed---Tp-Programacion-Web
 git checkout tp3
-
 cp .env.example .env            # credenciales de desarrollo (se puede editar)
-docker compose up --build -d    # o el atajo: make up-all
+
+# 2. Levantar la aplicación y probarla
+make up-all                     # compila y levanta la base + el servidor
+make test                       # corre los tests de las queries (base vacía)
+bash seed.sh                    # carga los datos de prueba
+bash requests.sh                # corre los 85 casos de la API con curl
 ```
 
 Queda el servidor en **http://localhost:8080** (el frontend se sirve en `/` y
 `GET /health` devuelve `200` si la base responde).
 
-### Datos de prueba y pruebas de la API
+**Qué hace cada comando:**
 
-Con los contenedores arriba:
+| Comando | Qué hace |
+| --- | --- |
+| `make up-all` | Compila la imagen del servidor (`Dockerfile`) y levanta PostgreSQL + el web server con Docker Compose, esperando a que ambos estén saludables. Equivale a `docker compose up --build -d`. La primera vez tarda un poco más por el build. |
+| `make test` | Corre los tests de las queries de `db/sqlc` contra PostgreSQL real. Necesita la base **vacía** (recién creada), por eso va antes del `seed`: si ya cargaste los datos, hacé `make down` y volvé a empezar desde `make up-all`. |
+| `bash seed.sh` | Carga los datos de prueba (profesor, materia, cursada y avisos). Se puede correr las veces que quieras: no duplica filas y restaura lo que borran las pruebas. |
+| `bash requests.sh` | Corre los 85 casos de la API con `curl` contra `localhost:8080` (casos felices y de error). Imprime cada caso con su status esperado (`Caso N: ...`) para comparar contra la respuesta real; se puede re-ejecutar después de cada `bash seed.sh`. |
 
-```bash
-bash seed.sh       # carga los datos de prueba (profesor, materia, cursada y avisos)
-bash requests.sh   # corre los 85 casos de prueba con curl contra localhost:8080
-```
-
-- `seed.sh` se puede correr las veces que quieras: no duplica filas y restaura lo
-  que borran las pruebas, así `requests.sh` es re-ejecutable.
-- `requests.sh` imprime cada caso con el status esperado (las líneas `Caso N: ...`),
-  así se puede comparar contra la respuesta de `curl`.
+> Para bajar todo: `make down` (detiene y borra contenedores, datos y volúmenes).
 
 ## Alternativa: correr el servidor localmente con Go
 
