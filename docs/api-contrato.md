@@ -189,24 +189,34 @@ Diferencias con el ejemplo del roadmap (§6): el ejemplo incluía
 `"active_subscribers": 34` (ver decisión #8) y mostraba `end_date` como
 `"2026-12-15"`; la implementación devuelve el timestamp completo.
 
-Pendiente de implementar por A (Fase 3):
+## Cuentas de profesor (`users`) — A (Fase 3, implementado)
 
-## POST /users · crear cuenta de profesor · → 201
+| Endpoint | Éxito | Errores |
+| --- | --- | --- |
+| `POST /users` | `201` → `UserDTO` | `400` campos vacíos o email inválido · `409` email duplicado · `405` |
+| `GET /users` | `200` → `[UserDTO]` (vacío `[]`) | `405` |
+| `GET /users/{id}` | `200` → `UserDTO` | `404` · `400` UUID inválido · `405` |
+| `PUT /users/{id}` | `200` → `UserDTO` | `400` fullname vacío · `404` · `405` |
+| `DELETE /users/{id}` | `204` sin body | `404` · `400` UUID inválido · `405` |
 
-Body:
+Body de `POST /users` (la password llega en texto plano y se guarda hasheada
+con bcrypt; el id lo genera la base):
 
 ```json
 { "fullname": "Prof. Gómez", "email": "gomez@unc.edu.ar", "password": "secreta" }
 ```
 
-Respuesta `201` (`UserDTO`, **sin** `password_hash`):
+Body de `PUT /users/{id}` (sólo el nombre, igual que `UpdateUserFullname`):
+
+```json
+{ "fullname": "Prof. Gómez" }
+```
+
+`UserDTO` (única forma de salida, **nunca** incluye `password_hash`):
 
 ```json
 { "id_user": "uuid", "fullname": "Prof. Gómez", "email": "gomez@unc.edu.ar" }
 ```
-
-Email duplicado (UNIQUE) → `409`. Campos vacíos o email inválido → `400`.
-Query: `CreateUser` (password hasheada con bcrypt en el service).
 
 ---
 
