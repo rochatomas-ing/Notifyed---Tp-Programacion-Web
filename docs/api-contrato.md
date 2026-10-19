@@ -28,6 +28,7 @@ código. Las decisiones marcadas ⚠️ son propuestas y necesitan el ok de los 
 | 5 | `GET /semesters/{id}/suscriptos` | `{"active_subscribers": 34}` (objeto, no número suelto) |
 | 6 | Validación de email | Obligatorio, ≤ 80 caracteres (varchar(80)), formato validado con `net/mail` |
 | 7 | `PUT /notices/{id}` | Solo `message`, no `title` (ya implementado así) |
+| 8 | `GET /semesters/{sub_token}` | El ejemplo del roadmap trae `active_subscribers`; la query actual no lo devuelve. Propuesta: no agregarlo (el panel del profesor ya lo tiene en `/profesores/{id}/semesters`) y corregir el ejemplo. Si se necesita en el QR, A agrega la query |
 
 ---
 
@@ -162,6 +163,27 @@ Sin datos → `200 []`. `{id}` no UUID → `400`. Query: `ListNoticesWithSender`
 Ya implementado y andando: CRUD de `courses`, `semesters` (crear, listar por
 profesor, `GET /semesters/{sub_token}` con `is_open`, `PUT` para cerrar con
 `end_date`, `DELETE`) y CRUD de `notices` (B, Fase 1-2).
+
+### GET /semesters/{sub_token} · resolución del QR · → 200 | 404
+
+Respuesta actual (implementada):
+
+```json
+{
+  "id_semester": "uuid",
+  "id_course": "uuid",
+  "professor_id": "uuid",
+  "year": 2026,
+  "sub_token": "abc123",
+  "end_date": "2026-12-15T00:00:00Z",
+  "course_name": "Programación Web",
+  "is_open": true
+}
+```
+
+⚠️ Diferencias con el ejemplo del roadmap (§6): el ejemplo incluía
+`"active_subscribers": 34` (ver decisión #8) y mostraba `end_date` como
+`"2026-12-15"`; la implementación devuelve el timestamp completo.
 
 Pendiente de A (Fase 3) — borrador para el ok:
 
