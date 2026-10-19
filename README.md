@@ -144,9 +144,4 @@ Cada capa habla sólo con la de abajo: `handlersTP` → `service` → `db/sqlc`.
 | 4. Instrucciones de ejecución + Docker | este README + `Dockerfile` + `docker-compose.yml` (`make up-all`) |
 
 ## Documentación
-
-- [`docs/api-contrato.md`](docs/api-contrato.md) — contrato completo de la API (formas JSON y decisiones acordadas)
-- [`docs/tp3.pdf`](docs/tp3.pdf) — consigna del trabajo práctico
-- [`docs/ROADMAPTP3_DEFINITIVO.docx`](docs/ROADMAPTP3_DEFINITIVO.docx) — plan de trabajo por fases
 - [Documentación de la base de datos](https://docs.google.com/document/d/14D9cFFU1qXDRc5G7Rvl9kUP221paD0Ow21wZxIRfTSE/edit?usp=sharing)
-- `AGENTS.md` — contexto técnico para agentes de IA
