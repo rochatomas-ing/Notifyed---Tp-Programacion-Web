@@ -1,3 +1,7 @@
+# Nombre fijo del proyecto: lo asumen el Makefile (`-p notifyed`), seed.sh y el
+# propio README (`docker compose up`), así todos comandos apuntan al mismo stack.
+name: notifyed
+
 services:
   web:
     build: .
