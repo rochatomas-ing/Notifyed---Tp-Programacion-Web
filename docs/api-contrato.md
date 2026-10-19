@@ -1,8 +1,8 @@
 # Contrato de la API — Notifyed (TP3)
 
-Acuerdos entre A y B sobre rutas, formas JSON y status codes. Se escribe
-**antes** de codear la Fase 3 y cualquier cambio se avisa antes de tocar
-código. Las decisiones marcadas ⚠️ son propuestas y necesitan el ok de los dos.
+Acuerdos entre A y B sobre rutas, formas JSON y status codes. Se escribió
+**antes** de codear la Fase 3; las decisiones marcadas ⚠️ quedaron acordadas
+y cualquier cambio se avisa antes de tocar código.
 
 ## Reglas generales
 
@@ -17,9 +17,9 @@ código. Las decisiones marcadas ⚠️ son propuestas y necesitan el ok de los 
 | Idioma | Rutas en inglés, mensajes en español |
 | Autenticación | Ninguna en este TP |
 
-## Decisiones a validar (⚠️)
+## Decisiones del contrato (⚠️ acordadas)
 
-| # | Tema | Propuesta |
+| # | Tema | Acuerdo |
 | --- | --- | --- |
 | 1 | Alta a una cursada cerrada (`end_date < hoy`) | `409 {"error":"la cursada está cerrada"}` |
 | 2 | `GET` estado de suscripción, email que nunca se inscribió | `404 {"error":"no hay inscripción con ese email"}` |
@@ -38,6 +38,10 @@ El alumno **no tiene cuenta**: se identifica con su email. `{sub_token}` es el
 token del QR de la cursada (`semesters.sub_token`). La UNIQUE `(id_semester,
 email)` garantiza una sola fila por alumno y cursada: la baja es **lógica**
 (`active = false`) y volver a escanear el QR **reactiva** en lugar de duplicar.
+
+> Las tres rutas se registran una sola vez como
+> `/semesters/{idOrToken}/inscriptions` (decisión #4); el alumno las usa con el
+> `sub_token`.
 
 ## POST /semesters/{sub_token}/inscriptions · alta · → 201
 
@@ -111,7 +115,7 @@ por `created_at`:
 
 Sin datos → `200 []` (nunca `null`). Query: `ListInscriptionsBySemester`.
 
-> ⚠️ Decisión 4: la misma ruta con `sub_token` (no UUID) atiende al alumno.
+> Decisión #4: la misma ruta con `sub_token` (no UUID) atiende al alumno.
 > Ruta registrada una sola vez como `/semesters/{idOrToken}/inscriptions`.
 
 ## POST /inscriptions/{id}/toggle · suspender/reactivar · → 200 | 404
@@ -181,11 +185,11 @@ Respuesta actual (implementada):
 }
 ```
 
-⚠️ Diferencias con el ejemplo del roadmap (§6): el ejemplo incluía
+Diferencias con el ejemplo del roadmap (§6): el ejemplo incluía
 `"active_subscribers": 34` (ver decisión #8) y mostraba `end_date` como
 `"2026-12-15"`; la implementación devuelve el timestamp completo.
 
-Pendiente de A (Fase 3) — borrador para el ok:
+Pendiente de implementar por A (Fase 3):
 
 ## POST /users · crear cuenta de profesor · → 201
 
@@ -206,14 +210,142 @@ Query: `CreateUser` (password hasheada con bcrypt en el service).
 
 ---
 
-# Referencia rápida de lo ya implementado
+# Anexo: formas JSON de los endpoints ya implementados (Fases 0-2)
 
-| Endpoint | Status |
-| --- | --- |
-| `GET /health` | 200 · 503 si la base no responde |
-| `GET/POST /courses` · `GET/PUT/DELETE /courses/{id}` | 200/201/204, 400/404/405 |
-| `GET /courses/{id}/semesters` | 200 |
-| `POST /semesters` · `GET /semesters/{idOrToken}` | 201 / 200, 404 |
-| `GET /profesores/{id}/semesters` | 200 |
-| `PUT /semesters/{id}` (cerrar) · `DELETE /semesters/{id}` | 200 · 204 |
-| `GET/POST /notices` · `GET/PUT/DELETE /notices/{id}` | 200/201/204, 400/404/405 |
+Documenta los endpoints construidos antes de la Fase 3, tal como responden hoy.
+Los endpoints nuevos de la Fase 3 tienen su propia sección más arriba.
+
+## Cursos (`courses`) — A
+
+| Endpoint | Éxito | Errores |
+| --- | --- | --- |
+| `GET /courses` | `200` → `[]Course` (orden por nombre; vacío `[]`) | — |
+| `POST /courses` | `201` → `Course` | `400` nombre vacío o de más de 40 caracteres · `405` |
+| `GET /courses/{id}` | `200` → `Course` | `404` · `400` UUID inválido · `405` |
+| `PUT /courses/{id}` | `200` → `Course` | `400` · `404` · `405` |
+| `DELETE /courses/{id}` | `204` sin body | `404` · `400` UUID inválido · `405` |
+| `GET /courses/{id}/semesters` | `200` → `[]Semester` (por año, descendente) | `400` UUID inválido · `405` |
+
+Body de `POST` y `PUT`:
+
+```json
+{ "name": "Programación Web" }
+```
+
+`Course`:
+
+```json
+{ "id_course": "uuid", "name": "Programación Web" }
+```
+
+## Cursadas (`semesters`) — A
+
+| Endpoint | Éxito | Errores |
+| --- | --- | --- |
+| `POST /semesters` | `201` → `Semester` | `400` faltantes, `end_date` mal formada o token de más de 32 caracteres · `409` token repetido o FK inexistente |
+| `GET /semesters/{idOrToken}` | `200` → `Semester` (UUID) o `SemesterByToken` (token) | `404` |
+| `GET /profesores/{id}/semesters` · `GET /semesters?professor_id=…` | `200` → `[]SemesterByProfessor` | `400` UUID faltante o inválido · `405` |
+| `PUT /semesters/{id}` (cerrar o corregir fecha) | `200` → `Semester` | `400` `end_date` mal formada · `404` |
+| `DELETE /semesters/{id}` | `204` sin body | `404` · `400` UUID inválido |
+
+Body de `POST /semesters` (`sub_token` es opcional: si falta, se genera):
+
+```json
+{
+  "id_course": "uuid",
+  "professor_id": "uuid",
+  "year": 2026,
+  "sub_token": "opcional",
+  "end_date": "2026-12-15"
+}
+```
+
+Body de `PUT /semesters/{id}`:
+
+```json
+{ "end_date": "2026-12-15" }
+```
+
+`Semester` (forma cruda: `POST`, `PUT`, `GET` con UUID y listado por curso):
+
+```json
+{
+  "id_semester": "uuid",
+  "id_course": "uuid",
+  "professor_id": "uuid",
+  "year": 2026,
+  "sub_token": "abc123",
+  "end_date": "2026-12-15T00:00:00Z"
+}
+```
+
+`SemesterByToken` (`GET /semesters/{sub_token}`): el anterior más `course_name`
+e `is_open` (sección "Parte del PROFESOR (A)").
+
+`SemesterByProfessor` (`GET /profesores/{id}/semesters` y
+`GET /semesters?professor_id=…`):
+
+```json
+{
+  "id_semester": "uuid",
+  "year": 2026,
+  "sub_token": "abc123",
+  "end_date": "2026-12-15T00:00:00Z",
+  "course_name": "Programación Web",
+  "active_subscribers": 34
+}
+```
+
+## Avisos (`notices`) — B (Fases 1-2)
+
+| Endpoint | Éxito | Errores |
+| --- | --- | --- |
+| `GET /notices` | `200` → `[]Notice` (más reciente primero; vacío `[]`) | — |
+| `POST /notices` | `201` → `Notice` | `400` título o mensaje vacíos, `id_semester` nulo, remitente inexistente · `405` |
+| `GET /notices/{id}` | `200` → `Notice` | `404` · `400` UUID inválido · `405` |
+| `PUT /notices/{id}` | `200` → `Notice` | `400` mensaje vacío · `404` · `405` |
+| `DELETE /notices/{id}` | `204` sin body | `404` · `400` UUID inválido · `405` |
+
+Body de `POST /notices`:
+
+```json
+{
+  "id_semester": "uuid",
+  "id_sender": "uuid",
+  "title": "Parcial",
+  "message": "Se toma el lunes"
+}
+```
+
+Body de `PUT /notices/{id}` (solo `message`, decisión #7):
+
+```json
+{ "message": "Mensaje corregido" }
+```
+
+`Notice`:
+
+```json
+{
+  "id_notice": "uuid",
+  "id_semester": "uuid",
+  "id_sender": "uuid",
+  "title": "Parcial",
+  "message": "Se toma el lunes",
+  "created_at": "2026-10-18T10:00:00Z"
+}
+```
+
+## Excepciones al "siempre JSON"
+
+Fuera de los endpoints de la API, para que no sorprenda:
+
+- `GET /` sirve `static/index.html` (HTML a propósito: es el frontend).
+- `GET /health` responde `200` sin body, o `503` con texto plano
+  (`database unavailable`): es infraestructura, no API.
+- Las rutas no registradas caen en el `404 page not found` por defecto del
+  `ServeMux` (texto plano).
+- El index responde `405` con texto plano si el método no es `GET`.
+
+Si se quiere todo JSON hasta en infraestructura, A puede cambiarlo sin tocar el
+contrato de la API.
