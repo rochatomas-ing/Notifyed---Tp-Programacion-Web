@@ -14,6 +14,7 @@ type noticeService interface {
 	Create(context.Context, db.CreateNoticeParams) (db.Notice, error)
 	Get(context.Context, uuid.UUID) (db.Notice, error)
 	List(context.Context) ([]db.Notice, error)
+	ListBySemester(context.Context, uuid.UUID) ([]db.ListNoticesWithSenderRow, error)
 	UpdateMessage(context.Context, uuid.UUID, string) (db.Notice, error)
 	Delete(context.Context, uuid.UUID) error
 }
@@ -31,11 +32,12 @@ type noticeUpdateRequest struct {
 	Message string `json:"message"`
 }
 
-// RegisterNoticeRoutes registra /notices (GET listar | POST crear) y
-// /notices/{id} (GET | PUT | DELETE).
+// RegisterNoticeRoutes registra /notices (GET listar | POST crear),
+// /notices/{id} (GET | PUT | DELETE) y el historial de una cursada.
 func RegisterNoticeRoutes(mux *http.ServeMux, notices *service.NoticeService) {
 	mux.HandleFunc("/notices", noticesCollectionHandler(notices))
 	mux.HandleFunc("/notices/{id}", noticeHandler(notices))
+	mux.HandleFunc("/semesters/{id}/notices", semesterNoticesHandler(notices))
 }
 
 func noticesCollectionHandler(notices noticeService) http.HandlerFunc {
@@ -104,5 +106,26 @@ func noticeHandler(notices noticeService) http.HandlerFunc {
 		default:
 			HandleError(w, http.StatusMethodNotAllowed, "método no permitido")
 		}
+	}
+}
+
+// semesterNoticesHandler sirve el historial publicado de una cursada
+// (GET /semesters/{id}/notices).
+func semesterNoticesHandler(notices noticeService) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			HandleError(w, http.StatusMethodNotAllowed, "método no permitido")
+			return
+		}
+		id, ok := ParsePathUUID(w, r, "id")
+		if !ok {
+			return
+		}
+		result, err := notices.ListBySemester(r.Context(), id)
+		if err != nil {
+			HandleServiceError(w, err)
+			return
+		}
+		WriteJSON(w, http.StatusOK, result)
 	}
 }

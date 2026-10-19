@@ -43,6 +43,10 @@ func HandleServiceError(w http.ResponseWriter, err error) {
 	switch {
 	case errors.Is(err, sql.ErrNoRows):
 		HandleError(w, http.StatusNotFound, "recurso no encontrado")
+	case errors.Is(err, service.ErrSemesterClosed):
+		HandleError(w, http.StatusConflict, err.Error())
+	case errors.Is(err, service.ErrInscriptionNotFound):
+		HandleError(w, http.StatusNotFound, err.Error())
 	case errors.Is(err, service.ErrInvalidInput):
 		HandleError(w, http.StatusBadRequest, err.Error())
 	case errors.Is(err, service.ErrConflict):

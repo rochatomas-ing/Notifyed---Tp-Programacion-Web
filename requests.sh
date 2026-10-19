@@ -8,6 +8,7 @@
 #   4. Correr las pruebas:          bash requests.sh
 #
 # Los UUID fijos que aparecen abajo (1111…, 3333…, 4444…, 5555…) salen del seed.sql.
+# El sub_token de la cursada del seed es "sub-token-de-prueba" (sección INSCRIPCIONES).
 # Para volver a correr todo desde cero: bash seed.sh otra vez (restaura el aviso
 # que borra el caso 5).
 
@@ -101,6 +102,152 @@ echo "Caso 16: POST con id_sender inexistente (espero 400)"
 curl -i -X POST http://localhost:8080/notices \
   -H "Content-Type: application/json" \
   -d '{"id_semester":"33333333-3333-3333-3333-333333333333","id_sender":"00000000-0000-0000-0000-000000000000","title":"Aviso","message":"De un profesor que no existe"}'
+
+# ══════════════════════════════════════════════════════════════
+#  INSCRIPCIONES (B)
+# ══════════════════════════════════════════════════════════════
+# El alumno usa el sub_token del QR ("sub-token-de-prueba" en el seed);
+# el profesor, el UUID de la cursada (3333…).
+
+# ── Casos felices ─────────────────────────────────────────────
+
+# ── Caso 17: POST alta con el token del QR (espero 201) ──
+# Guardo el id que devuelve el alta para los casos del panel (toggle, delete).
+echo "Caso 17: POST /semesters/{token}/inscriptions — alta (espero 201)"
+ALTA=$(curl -s -X POST http://localhost:8080/semesters/sub-token-de-prueba/inscriptions \
+  -H "Content-Type: application/json" \
+  -d '{"email":"alumno@test.com"}')
+echo "$ALTA"
+ID_INSCRIPCION=$(echo "$ALTA" | sed -n 's/.*"id_inscription":"\([^"]*\)".*/\1/p')
+
+# ── Caso 18: GET estado de la suscripción (espero 200, active true) ──
+echo "Caso 18: GET estado de la suscripción (espero 200)"
+curl -i "http://localhost:8080/semesters/sub-token-de-prueba/inscriptions?email=alumno@test.com"
+
+# ── Caso 19: DELETE baja lógica (espero 204, sin body) ──
+echo "Caso 19: DELETE /semesters/{token}/inscriptions — baja (espero 204)"
+curl -i -X DELETE http://localhost:8080/semesters/sub-token-de-prueba/inscriptions \
+  -H "Content-Type: application/json" \
+  -d '{"email":"alumno@test.com"}'
+
+# ── Caso 20: el estado después de la baja (espero 200, active false) ──
+echo "Caso 20: GET estado tras la baja (espero 200, active false)"
+curl -i "http://localhost:8080/semesters/sub-token-de-prueba/inscriptions?email=alumno@test.com"
+
+# ── Caso 21: volver a escanear el QR reactiva (espero 201) ──
+echo "Caso 21: POST alta de nuevo — reactivación (espero 201)"
+curl -i -X POST http://localhost:8080/semesters/sub-token-de-prueba/inscriptions \
+  -H "Content-Type: application/json" \
+  -d '{"email":"alumno@test.com"}'
+
+# ── Caso 22: GET listado de inscriptos de la cursada (espero 200) ──
+echo "Caso 22: GET /semesters/{id}/inscriptions — listado (espero 200)"
+curl -i http://localhost:8080/semesters/33333333-3333-3333-3333-333333333333/inscriptions
+
+# ── Caso 23: listado de una cursada sin inscriptos (espero 200, []) ──
+echo "Caso 23: GET listado sin datos (espero 200, [])"
+curl -i http://localhost:8080/semesters/99999999-9999-9999-9999-999999999999/inscriptions
+
+# ── Caso 24: contador de suscriptos activos (espero 200, 1) ──
+echo "Caso 24: GET /semesters/{id}/suscriptos (espero 200)"
+curl -i http://localhost:8080/semesters/33333333-3333-3333-3333-333333333333/suscriptos
+
+# ── Caso 25: toggle — suspender (espero 200, active false) ──
+echo "Caso 25: POST /inscriptions/{id}/toggle — suspender (espero 200)"
+curl -i -X POST "http://localhost:8080/inscriptions/$ID_INSCRIPCION/toggle"
+
+# ── Caso 26: toggle de nuevo — reactivar (espero 200, active true) ──
+echo "Caso 26: POST toggle de nuevo — reactivar (espero 200)"
+curl -i -X POST "http://localhost:8080/inscriptions/$ID_INSCRIPCION/toggle"
+
+# ── Caso 27: GET historial de avisos de la cursada (espero 200) ──
+echo "Caso 27: GET /semesters/{id}/notices — historial (espero 200)"
+curl -i http://localhost:8080/semesters/33333333-3333-3333-3333-333333333333/notices
+
+# ── Caso 28: DELETE /inscriptions/{id} — borrado duro (espero 204) ──
+# Doy de alta un segundo alumno sólo para borrarlo.
+echo "Caso 28: DELETE /inscriptions/{id} — borrado duro (espero 204)"
+BORRAR=$(curl -s -X POST http://localhost:8080/semesters/sub-token-de-prueba/inscriptions \
+  -H "Content-Type: application/json" \
+  -d '{"email":"borrar@test.com"}')
+ID_BORRAR=$(echo "$BORRAR" | sed -n 's/.*"id_inscription":"\([^"]*\)".*/\1/p')
+curl -i -X DELETE "http://localhost:8080/inscriptions/$ID_BORRAR"
+
+# ── Caso 29: toggle de la borrada (espero 404) ──
+echo "Caso 29: POST toggle de una inscripción borrada (espero 404)"
+curl -i -X POST "http://localhost:8080/inscriptions/$ID_BORRAR/toggle"
+
+# ── Casos de error ────────────────────────────────────────────
+
+# ── Caso 30: alta con email sin formato (espero 400) ──
+echo "Caso 30: POST alta con email inválido (espero 400)"
+curl -i -X POST http://localhost:8080/semesters/sub-token-de-prueba/inscriptions \
+  -H "Content-Type: application/json" \
+  -d '{"email":"no-es-un-email"}'
+
+# ── Caso 31: alta con email vacío (espero 400) ──
+echo "Caso 31: POST alta con email vacío (espero 400)"
+curl -i -X POST http://localhost:8080/semesters/sub-token-de-prueba/inscriptions \
+  -H "Content-Type: application/json" \
+  -d '{"email":""}'
+
+# ── Caso 32: alta con email de más de 80 caracteres (espero 400) ──
+echo "Caso 32: POST alta con email de más de 80 caracteres (espero 400)"
+curl -i -X POST http://localhost:8080/semesters/sub-token-de-prueba/inscriptions \
+  -H "Content-Type: application/json" \
+  -d '{"email":"este-email-es-demasiado-largo-para-la-validacion-de-ochenta-caracteres-y-por-eso-se-rechaza@test.com"}'
+
+# ── Caso 33: alta con token inexistente (espero 404) ──
+echo "Caso 33: POST alta con token inexistente (espero 404)"
+curl -i -X POST http://localhost:8080/semesters/token-que-no-existe/inscriptions \
+  -H "Content-Type: application/json" \
+  -d '{"email":"alumno2@test.com"}'
+
+# ── Caso 34: baja de un email que nunca se inscribió (espero 404) ──
+echo "Caso 34: DELETE baja nunca inscripto (espero 404)"
+curl -i -X DELETE http://localhost:8080/semesters/sub-token-de-prueba/inscriptions \
+  -H "Content-Type: application/json" \
+  -d '{"email":"nunca@test.com"}'
+
+# ── Caso 35: estado de un email que nunca se inscribió (espero 404) ──
+echo "Caso 35: GET estado nunca inscripto (espero 404)"
+curl -i "http://localhost:8080/semesters/sub-token-de-prueba/inscriptions?email=nunca@test.com"
+
+# ── Caso 36: estado sin el parámetro email (espero 400) ──
+echo "Caso 36: GET estado sin email (espero 400)"
+curl -i http://localhost:8080/semesters/sub-token-de-prueba/inscriptions
+
+# ── Caso 37: POST con JSON inválido (espero 400) ──
+echo "Caso 37: POST con JSON inválido (espero 400)"
+curl -i -X POST http://localhost:8080/semesters/sub-token-de-prueba/inscriptions \
+  -H "Content-Type: application/json" \
+  -d 'esto no es json'
+
+# ── Caso 38: toggle con UUID inválido en la URL (espero 400) ──
+echo "Caso 38: POST toggle con UUID inválido (espero 400)"
+curl -i -X POST http://localhost:8080/inscriptions/abc/toggle
+
+# ── Caso 39: PATCH /inscriptions/{id} — método no permitido (espero 405) ──
+echo "Caso 39: PATCH /inscriptions/{id} (espero 405)"
+curl -i -X PATCH "http://localhost:8080/inscriptions/$ID_INSCRIPCION"
+
+# ── Caso 40: alta a una cursada cerrada (espero 409) ──
+# Se cierra la cursada del seed (end_date pasada), se prueba el alta y se
+# vuelve a abrir para que el resto del archivo quede igual que antes.
+echo "Caso 40a: PUT — cierro la cursada del seed (espero 200)"
+curl -i -X PUT http://localhost:8080/semesters/33333333-3333-3333-3333-333333333333 \
+  -H "Content-Type: application/json" \
+  -d '{"end_date":"2020-01-01"}'
+
+echo "Caso 40: POST alta a cursada cerrada (espero 409)"
+curl -i -X POST http://localhost:8080/semesters/sub-token-de-prueba/inscriptions \
+  -H "Content-Type: application/json" \
+  -d '{"email":"tarde@test.com"}'
+
+echo "Caso 40b: PUT — reabro la cursada (espero 200)"
+curl -i -X PUT http://localhost:8080/semesters/33333333-3333-3333-3333-333333333333 \
+  -H "Content-Type: application/json" \
+  -d '{"end_date":"2026-12-15"}'
 
 # ══════════════════════════════════════════════════════════════
 #  (Acá abajo Mati agrega su sección: users, courses, semesters)

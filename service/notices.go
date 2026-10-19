@@ -17,6 +17,7 @@ type NoticeQueries interface {
 	CreateNotice(context.Context, db.CreateNoticeParams) (db.Notice, error)
 	GetNoticeById(context.Context, uuid.UUID) (db.Notice, error)
 	ListNotices(context.Context) ([]db.Notice, error)
+	ListNoticesWithSender(context.Context, uuid.UUID) ([]db.ListNoticesWithSenderRow, error)
 	UpdateNoticeMessage(context.Context, db.UpdateNoticeMessageParams) (db.Notice, error)
 	DeleteNotice(context.Context, uuid.UUID) (int64, error)
 	GetUserById(context.Context, uuid.UUID) (db.User, error)
@@ -63,6 +64,16 @@ func (s *NoticeService) List(ctx context.Context) ([]db.Notice, error) {
 	notices, err := s.queries.ListNotices(ctx)
 	if notices == nil && err == nil {
 		notices = []db.Notice{}
+	}
+	return notices, err
+}
+
+// ListBySemester devuelve el historial publicado de una cursada, con el nombre
+// del profesor que publicó cada aviso (GET /semesters/{id}/notices).
+func (s *NoticeService) ListBySemester(ctx context.Context, id uuid.UUID) ([]db.ListNoticesWithSenderRow, error) {
+	notices, err := s.queries.ListNoticesWithSender(ctx, id)
+	if notices == nil && err == nil {
+		notices = []db.ListNoticesWithSenderRow{}
 	}
 	return notices, err
 }
