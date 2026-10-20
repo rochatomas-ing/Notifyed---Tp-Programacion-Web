@@ -11,7 +11,7 @@ export DB_HOST DB_PORT DB_USER DB_PASSWORD DB_NAME DB_SSLMODE
 export TEST_DB_URL := postgres://$(POSTGRES_USER):$(POSTGRES_PASSWORD)@localhost:$(POSTGRES_PORT)/$(POSTGRES_DB)?sslmode=disable
 COMPOSE := docker compose -p notifyed
 
-.PHONY: all build down up up-all run test clean
+.PHONY: all build down up up-all run test api clean
 
 all:
 	@$(MAKE) --no-print-directory build
@@ -20,6 +20,7 @@ all:
 	trap '$(MAKE) --no-print-directory down' EXIT; \
 	$(MAKE) --no-print-directory up; \
 	$(MAKE) --no-print-directory test; \
+	$(MAKE) --no-print-directory api \
 	$(MAKE) --no-print-directory clean
 
 generate:
@@ -48,6 +49,12 @@ build: generate
 test:
 	@echo "Corriendo los tests..."
 	@go test -v ./db/sqlc
+
+api: up-all
+	@echo "Corriendo el script de seed y requests..."
+	@bash seed.sh
+	@echo "Corriendo la prueba de los endpoints..."
+	@bash requests.sh
 
 clean:
 	@echo "Limpiando archivos generados..."
