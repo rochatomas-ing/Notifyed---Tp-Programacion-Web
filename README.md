@@ -30,10 +30,8 @@ git checkout tp3
 cp .env.example .env            # credenciales de desarrollo (se puede editar)
 
 # 2. Levantar la aplicación y probarla
-make up-all                     # compila y levanta la base + el servidor
-make test                       # corre los tests de las queries (base vacía)
-bash seed.sh                    # carga los datos de prueba
-bash requests.sh                # corre los 85 casos de la API con curl
+make # Levanta el contenedor, realiza los tests, prueba la API, y baja los volumenes y contenedores.
+make clean # Limpia archivos temporales que quedaron del make
 ```
 
 Queda el servidor en **http://localhost:8080** (el frontend se sirve en `/` y
