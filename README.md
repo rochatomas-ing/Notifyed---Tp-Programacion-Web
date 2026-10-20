@@ -37,15 +37,6 @@ make clean # Limpia archivos temporales que quedaron del make
 Queda el servidor en **http://localhost:8080** (el frontend se sirve en `/` y
 `GET /health` devuelve `200` si la base responde).
 
-**Qué hace cada comando:**
-
-| Comando | Qué hace |
-| --- | --- |
-| `make up-all` | Compila la imagen del servidor (`Dockerfile`) y levanta PostgreSQL + el web server con Docker Compose, esperando a que ambos estén saludables. Equivale a `docker compose up --build -d`. La primera vez tarda un poco más por el build. |
-| `make test` | Corre los tests de las queries de `db/sqlc` contra PostgreSQL real. Necesita la base **vacía** (recién creada), por eso va antes del `seed`: si ya cargaste los datos, hacé `make down` y volvé a empezar desde `make up-all`. |
-| `bash seed.sh` | Carga los datos de prueba (profesor, materia, cursada y avisos). Se puede correr las veces que quieras: no duplica filas y restaura lo que borran las pruebas. |
-| `bash requests.sh` | Corre los 85 casos de la API con `curl` contra `localhost:8080` (casos felices y de error). Imprime cada caso con su status esperado (`Caso N: ...`) para comparar contra la respuesta real; se puede re-ejecutar después de cada `bash seed.sh`. |
-
 > Para bajar todo: `make down` (detiene y borra contenedores, datos y volúmenes).
 
 ## Alternativa: correr el servidor localmente con Go
@@ -108,6 +99,7 @@ make test   # tests de queries sqlc contra PostgreSQL real
 | `make test` | Tests de queries sqlc (requiere la base arriba y vacía) |
 | `make down` | Baja los contenedores y borra los volúmenes (**borra los datos**) |
 | `make generate` | Regenera `db/sqlc/` con sqlc (requiere tener sqlc instalado) |
+| `make api` | Genera los datos de prueba con seed.sh y realiza las pruebas con requests.sh) |
 | `make build` | `generate` + compila el binario en `tmp/` |
 | `make clean` | Borra el binario temporal |
 | `make` | Flujo completo: build → down → up → test → down → clean (**requiere sqlc**) |
