@@ -1,0 +1,29 @@
+package views
+
+// EntityForm renderiza el formulario clásico para la creación de una nueva materia
+templ EntityForm() {
+	<article>
+		<header>
+			<h3>Nueva Materia</h3>
+		</header>
+		<form method="POST" action="/courses">
+			<label for="name">
+				Nombre de la materia
+				<input
+					type="text"
+					id="name"
+					name="name"
+					placeholder="Ej: Programación Web"
+					maxlength="40"
+					required
+					autocomplete="off"
+				/>
+			</label>
+			<small>El nombre es obligatorio y debe tener hasta 40 caracteres.</small>
+			<footer>
+				<button type="submit">Crear Materia</button>
+			</footer>
+		</form>
+	</article>
+}
+

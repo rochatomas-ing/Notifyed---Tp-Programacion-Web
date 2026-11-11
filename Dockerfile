@@ -1,5 +1,5 @@
 # Etapa 1: Compilación
-FROM golang:1.22-alpine AS builder
+FROM golang:1.26-alpine AS builder
 WORKDIR /app
 
 # Copiar dependencias
@@ -25,9 +25,6 @@ USER app
 
 # Copiar UNICAMENTE el binario al PATH del sistema
 COPY --from=builder /app/api /usr/local/bin/api
-
-# 2. Copiar los archivos estáticos del frontend para que Go los encuentre
-COPY --from=builder /app/static ./static
 
 EXPOSE 8080
 

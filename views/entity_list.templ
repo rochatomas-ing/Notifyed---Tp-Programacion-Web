@@ -1,0 +1,56 @@
+package views
+
+import (
+	"fmt"
+	db "servidor-NotifyEd/db/sqlc"
+)
+
+// EntityList renderiza el listado o tabla con todas las materias registradas
+templ EntityList(courses []db.Course) {
+	<article>
+		<header style="display: flex; justify-content: space-between; align-items: center;">
+			<h3>Materias Registradas</h3>
+			<span style="background-color: var(--pico-primary-background); color: var(--pico-primary-inverse); padding: 0.2rem 0.6rem; border-radius: 1rem; font-size: 0.85rem; font-weight: bold;">
+				{ fmt.Sprintf("%d", len(courses)) }
+			</span>
+		</header>
+		if len(courses) == 0 {
+			<p><em>No hay materias registradas en el sistema.</em></p>
+			<small>Completa el formulario para registrar la primera materia.</small>
+		} else {
+			<div class="overflow-auto">
+				<table class="striped">
+					<thead>
+						<tr>
+							<th scope="col">Materia</th>
+							<th scope="col">ID (UUID)</th>
+							<th scope="col" style="text-align: right;">Acción</th>
+						</tr>
+					</thead>
+					<tbody>
+						for _, course := range courses {
+							<tr>
+								<td><strong>{ course.Name }</strong></td>
+								<td><code>{ course.IDCourse.String() }</code></td>
+								<td style="text-align: right;">
+									<form method="POST" action="/courses/delete" style="display: inline; margin: 0;">
+										<input type="hidden" name="id" value={ course.IDCourse.String() }/>
+										<button
+											type="submit"
+											class="secondary outline"
+											style="padding: 0.25rem 0.6rem; margin: 0; font-size: 0.8rem;"
+											onclick="return confirm('¿Seguro que deseas eliminar esta materia?');"
+										>
+											Eliminar
+										</button>
+									</form>
+								</td>
+							</tr>
+						}
+					</tbody>
+				</table>
+			</div>
+		}
+	</article>
+}
+

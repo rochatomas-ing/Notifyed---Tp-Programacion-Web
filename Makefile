@@ -1,5 +1,7 @@
 -include .env
 
+export PATH := $(HOME)/go/bin:$(PATH)
+
 APP_NAME := notifyed
 DB_HOST ?= localhost
 DB_PORT ?= $(if $(POSTGRES_PORT),$(POSTGRES_PORT),5432)
@@ -11,7 +13,7 @@ export DB_HOST DB_PORT DB_USER DB_PASSWORD DB_NAME DB_SSLMODE
 export TEST_DB_URL := postgres://$(POSTGRES_USER):$(POSTGRES_PASSWORD)@localhost:$(POSTGRES_PORT)/$(POSTGRES_DB)?sslmode=disable
 COMPOSE := docker compose -p notifyed
 
-.PHONY: all build down up up-all run test api clean
+.PHONY: all build down up up-all run test api clean generate
 
 all:
 	@$(MAKE) --no-print-directory build
@@ -20,12 +22,13 @@ all:
 	trap '$(MAKE) --no-print-directory down' EXIT; \
 	$(MAKE) --no-print-directory up; \
 	$(MAKE) --no-print-directory test; \
-	$(MAKE) --no-print-directory api \
 	$(MAKE) --no-print-directory clean
 
 generate:
 	@echo "Generando código con sqlc (Si ya existe es regenerado)..."
 	@sqlc generate
+	@echo "Generando vistas con templ..."
+	@templ generate
 
 up:
 	@echo "Iniciando contenedores de Docker..."
@@ -35,7 +38,8 @@ up-all:
 	@echo "Iniciando la aplicación y la base de datos..."
 	@$(COMPOSE) up -d --build --wait
 
-run:
+run: generate
+	@echo "Iniciando el servidor Go..."
 	@go run .
 
 down:
@@ -50,13 +54,7 @@ test:
 	@echo "Corriendo los tests..."
 	@go test -v ./db/sqlc
 
-api: up-all
-	@echo "Corriendo el script de seed y requests..."
-	@bash seed.sh
-	@echo "Corriendo la prueba de los endpoints..."
-	@bash requests.sh
-
 clean:
 	@echo "Limpiando archivos generados..."
 	@rm -f tmp/$(APP_NAME)
-	@rm -rf tmp	
+	@rm -rf tmp
