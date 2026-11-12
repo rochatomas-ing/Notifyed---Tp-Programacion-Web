@@ -21,8 +21,9 @@ Sistema de gestión de materias y avisos para cursadas universitarias. En esta e
 Para clonar y probar el proyecto de punta a punta con un único comando:
 
 ```bash
-git clone -b tp5 https://github.com/rochatomas-ing/Notifyed---Tp-Programacion-Web.git
+git clone https://github.com/rochatomas-ing/Notifyed---Tp-Programacion-Web.git
 cd Notifyed---Tp-Programacion-Web
+git checkout tp5
 make run-app
 ```
 
