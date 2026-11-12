@@ -3,6 +3,7 @@
 # Backups locales: no se suben a git ni a GitHub
 notifyed-contexto/
 .docs/
+docs/
 
 # Artefactos de build
 tmp/

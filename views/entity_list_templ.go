@@ -99,7 +99,7 @@ func EntityList(courses []db.Course) templ.Component {
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 8, "\"> <button type=\"submit\" class=\"secondary outline\" style=\"padding: 0.25rem 0.6rem; margin: 0; font-size: 0.8rem;\" onclick=\"return confirm('¿Seguro que deseas eliminar esta materia?');\">Eliminar</button></form></td></tr>")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 8, "\"> <button type=\"submit\" class=\"secondary outline\" style=\"padding: 0.25rem 0.6rem; margin: 0; font-size: 0.8rem;\">Eliminar</button></form></td></tr>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
