@@ -161,6 +161,77 @@ func (q *Queries) ListNoticesBySemester(ctx context.Context, idSemester uuid.UUI
 	return items, nil
 }
 
+const listNoticesFiltered = `-- name: ListNoticesFiltered :many
+SELECT
+    n.id_notice,
+    n.id_semester,
+    n.id_sender,
+    n.title,
+    n.message,
+    n.created_at,
+    c.name AS course_name,
+    c.id_course,
+    s.year AS semester_year
+FROM notices n
+JOIN semesters s ON s.id_semester = n.id_semester
+JOIN courses c ON c.id_course = s.id_course
+WHERE n.id_sender = $1
+  AND ($2::uuid IS NULL OR n.id_semester = $2)
+  AND ($3::uuid IS NULL OR c.id_course = $3)
+ORDER BY n.created_at DESC
+`
+
+type ListNoticesFilteredParams struct {
+	IDSender   uuid.UUID     `json:"id_sender"`
+	IDSemester uuid.NullUUID `json:"id_semester"`
+	IDCourse   uuid.NullUUID `json:"id_course"`
+}
+
+type ListNoticesFilteredRow struct {
+	IDNotice     uuid.UUID `json:"id_notice"`
+	IDSemester   uuid.UUID `json:"id_semester"`
+	IDSender     uuid.UUID `json:"id_sender"`
+	Title        string    `json:"title"`
+	Message      string    `json:"message"`
+	CreatedAt    time.Time `json:"created_at"`
+	CourseName   string    `json:"course_name"`
+	IDCourse     uuid.UUID `json:"id_course"`
+	SemesterYear int32     `json:"semester_year"`
+}
+
+func (q *Queries) ListNoticesFiltered(ctx context.Context, arg ListNoticesFilteredParams) ([]ListNoticesFilteredRow, error) {
+	rows, err := q.db.QueryContext(ctx, listNoticesFiltered, arg.IDSender, arg.IDSemester, arg.IDCourse)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListNoticesFilteredRow
+	for rows.Next() {
+		var i ListNoticesFilteredRow
+		if err := rows.Scan(
+			&i.IDNotice,
+			&i.IDSemester,
+			&i.IDSender,
+			&i.Title,
+			&i.Message,
+			&i.CreatedAt,
+			&i.CourseName,
+			&i.IDCourse,
+			&i.SemesterYear,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listNoticesWithSender = `-- name: ListNoticesWithSender :many
 SELECT
     n.id_notice,

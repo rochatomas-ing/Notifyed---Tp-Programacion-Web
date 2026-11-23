@@ -56,3 +56,20 @@ RETURNING *;
 -- name: DeleteSemester :execrows
 DELETE FROM semesters
 WHERE id_semester = $1;
+
+-- name: ListSemestersWithCourseByProfessor :many
+SELECT
+    s.id_semester,
+    s.id_course,
+    s.year,
+    s.sub_token,
+    s.end_date,
+    (s.end_date >= CURRENT_DATE) AS is_open,
+    c.name AS course_name,
+    COUNT(i.id_inscription) FILTER (WHERE i.active) AS active_subscribers
+FROM semesters s
+JOIN courses c ON c.id_course = s.id_course
+LEFT JOIN inscriptions i ON i.id_semester = s.id_semester
+WHERE s.professor_id = $1
+GROUP BY s.id_semester, c.name, c.id_course
+ORDER BY c.name, s.year DESC;

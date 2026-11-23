@@ -7,6 +7,7 @@ package db
 
 import (
 	"context"
+	"time"
 
 	"github.com/google/uuid"
 )
@@ -142,6 +143,68 @@ func (q *Queries) ListActiveEmailsBySemester(ctx context.Context, idSemester uui
 	return items, nil
 }
 
+const listInscriptionsByEmailAndProfessor = `-- name: ListInscriptionsByEmailAndProfessor :many
+SELECT
+    i.id_inscription,
+    i.id_semester,
+    i.email,
+    i.active,
+    i.created_at,
+    s.year AS semester_year,
+    c.name AS course_name
+FROM inscriptions i
+JOIN semesters s ON s.id_semester = i.id_semester
+JOIN courses c ON c.id_course = s.id_course
+WHERE LOWER(TRIM(i.email)) = LOWER(TRIM($1)) AND s.professor_id = $2
+ORDER BY s.year DESC, c.name
+`
+
+type ListInscriptionsByEmailAndProfessorParams struct {
+	Btrim       string    `json:"btrim"`
+	ProfessorID uuid.UUID `json:"professor_id"`
+}
+
+type ListInscriptionsByEmailAndProfessorRow struct {
+	IDInscription uuid.UUID `json:"id_inscription"`
+	IDSemester    uuid.UUID `json:"id_semester"`
+	Email         string    `json:"email"`
+	Active        bool      `json:"active"`
+	CreatedAt     time.Time `json:"created_at"`
+	SemesterYear  int32     `json:"semester_year"`
+	CourseName    string    `json:"course_name"`
+}
+
+func (q *Queries) ListInscriptionsByEmailAndProfessor(ctx context.Context, arg ListInscriptionsByEmailAndProfessorParams) ([]ListInscriptionsByEmailAndProfessorRow, error) {
+	rows, err := q.db.QueryContext(ctx, listInscriptionsByEmailAndProfessor, arg.Btrim, arg.ProfessorID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListInscriptionsByEmailAndProfessorRow
+	for rows.Next() {
+		var i ListInscriptionsByEmailAndProfessorRow
+		if err := rows.Scan(
+			&i.IDInscription,
+			&i.IDSemester,
+			&i.Email,
+			&i.Active,
+			&i.CreatedAt,
+			&i.SemesterYear,
+			&i.CourseName,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listInscriptionsBySemester = `-- name: ListInscriptionsBySemester :many
 SELECT id_inscription, id_semester, email, active, created_at FROM inscriptions
 WHERE id_semester = $1
@@ -196,4 +259,29 @@ func (q *Queries) SetInscriptionActive(ctx context.Context, arg SetInscriptionAc
 		return 0, err
 	}
 	return result.RowsAffected()
+}
+
+const updateInscriptionActiveById = `-- name: UpdateInscriptionActiveById :one
+UPDATE inscriptions
+SET active = $2
+WHERE id_inscription = $1
+RETURNING id_inscription, id_semester, email, active, created_at
+`
+
+type UpdateInscriptionActiveByIdParams struct {
+	IDInscription uuid.UUID `json:"id_inscription"`
+	Active        bool      `json:"active"`
+}
+
+func (q *Queries) UpdateInscriptionActiveById(ctx context.Context, arg UpdateInscriptionActiveByIdParams) (Inscription, error) {
+	row := q.db.QueryRowContext(ctx, updateInscriptionActiveById, arg.IDInscription, arg.Active)
+	var i Inscription
+	err := row.Scan(
+		&i.IDInscription,
+		&i.IDSemester,
+		&i.Email,
+		&i.Active,
+		&i.CreatedAt,
+	)
+	return i, err
 }

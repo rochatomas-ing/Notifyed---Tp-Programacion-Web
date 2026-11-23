@@ -1,0 +1,105 @@
+package views
+
+import (
+	"fmt"
+	db "servidor-NotifyEd/db/sqlc"
+)
+
+// PublishNoticePage renderiza la página completa de Publicar Aviso (carga tradicional)
+templ PublishNoticePage(semesters []db.ListSemestersWithCourseByProfessorRow, professorName string) {
+	@Layout("NotifyEd - Publicar Aviso", "publicar", professorName) {
+		@PublishNoticeContent(semesters, false)
+	}
+}
+
+// PublishNoticeContent renderiza el contenido de Publicar Aviso (reutilizable en HTMX)
+templ PublishNoticeContent(semesters []db.ListSemestersWithCourseByProfessorRow, isHTMX bool) {
+	if isHTMX {
+		@TopNavBar("publicar", true)
+	}
+	<hgroup>
+		<h2>Publicar Nuevo Aviso</h2>
+		<p>Selecciona la materia y cursada correspondiente, completa el título y mensaje del aviso.</p>
+	</hgroup>
+
+	if len(semesters) == 0 {
+		<article style="text-align: center; padding: 2.5rem 1rem;">
+			<h4>No tienes cursadas disponibles</h4>
+			<p><em>Para poder emitir un aviso, primero debes tener al menos una cursada creada en el apartado de <a href="/" hx-get="/" hx-target="#main-content" hx-push-url="true">Materias</a>.</em></p>
+			<a
+				href="/"
+				hx-get="/"
+				hx-target="#main-content"
+				hx-push-url="true"
+				role="button"
+				class="primary"
+			>
+				Ir a Materias y Cursadas
+			</a>
+		</article>
+	} else {
+		<article style="padding: 2rem;">
+			<form
+				method="POST"
+				action="/avisos"
+				hx-post="/avisos"
+				hx-target="#main-content"
+				hx-push-url="true"
+			>
+				<label for="notice-semester">
+					Materia y Cursada Destino
+					<select id="notice-semester" name="id_semester" required>
+						for _, s := range semesters {
+							<option value={ s.IDSemester.String() }>
+								{ s.CourseName } — Cursada { fmt.Sprintf("%d", s.Year) }
+							</option>
+						}
+					</select>
+					<small>Los alumnos inscriptos y activos de esta cursada recibirán la notificación.</small>
+				</label>
+
+				<label for="notice-title" style="margin-top: 1rem;">
+					Título del aviso
+					<input
+						type="text"
+						id="notice-title"
+						name="title"
+						placeholder="Ej: Cambio de aula para el examen parcial"
+						maxlength="255"
+						required
+						autocomplete="off"
+					/>
+				</label>
+
+				<label for="notice-message" style="margin-top: 1rem;">
+					Mensaje
+					<textarea
+						id="notice-message"
+						name="message"
+						rows="6"
+						placeholder="Escribe aquí el contenido detallado del aviso..."
+						required
+					></textarea>
+					<small>El mensaje será visible en el historial y enviado por correo a los suscriptores.</small>
+				</label>
+
+				<footer style="margin-top: 1.5rem; display: flex; justify-content: flex-end; gap: 0.75rem;">
+					<a
+						href="/avisos"
+						hx-get="/avisos"
+						hx-target="#main-content"
+						hx-push-url="true"
+						role="button"
+						class="outline secondary"
+						style="margin-bottom: 0;"
+					>
+						Cancelar
+					</a>
+					<button type="submit" class="primary" style="margin-bottom: 0; width: auto;">
+						Publicar Aviso
+					</button>
+				</footer>
+			</form>
+		</article>
+	}
+}

@@ -1,46 +1,213 @@
 package views
 
-import db "servidor-NotifyEd/db/sqlc"
-
-// Layout define la estructura base HTML con Pico.css como hoja de estilos
-templ Layout(title string) {
+// Layout define la estructura base HTML con Pico.css, estética refinada (azul oscuro con tonos claros)
+// y barra top-nav con indicador iluminado inferior para el apartado activo.
+templ Layout(title string, activeTab string, professorName string) {
 	<!DOCTYPE html>
-	<html lang="es">
+	<html lang="es" data-theme="light">
 		<head>
 			<meta charset="UTF-8"/>
 			<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 			<title>{ title }</title>
-			<!-- Pico.css CDN para estilos limpios y semánticos -->
+			<!-- Pico.css v2 CDN -->
 			<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css"/>
+			<!-- HTMX para dinamismo SPA y actualizaciones parciales OOB -->
+			<script src="/static/htmx.min.js"></script>
+			<style>
+				:root {
+					--pico-primary: #1e40af;
+					--pico-primary-background: #1e40af;
+					--pico-primary-hover: #1d4ed8;
+					--pico-primary-hover-background: #1d4ed8;
+					--pico-primary-focus: rgba(30, 64, 175, 0.2);
+					--pico-background-color: #f8fafc;
+					--pico-card-background-color: #ffffff;
+					--pico-muted-border-color: #e2e8f0;
+					--pico-color: #1e293b;
+				}
+				body {
+					background-color: #f8fafc;
+					color: #1e293b;
+					min-height: 100vh;
+					display: flex;
+					flex-direction: column;
+				}
+				.htmx-indicator {
+					display: none;
+				}
+				.htmx-request .htmx-indicator,
+				.htmx-request.htmx-indicator {
+					display: inline-block;
+				}
+				.app-header {
+					background: linear-gradient(135deg, #0f172a 0%, #1e3a8a 100%);
+					color: #ffffff;
+					padding: 0.7rem 0;
+					margin-bottom: 0;
+					box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.07);
+				}
+				.brand-title {
+					font-size: 1.5rem;
+					font-weight: 700;
+					letter-spacing: -0.025em;
+					color: #ffffff;
+					margin-bottom: 0;
+				}
+				.brand-subtitle {
+					font-size: 0.82rem;
+					color: #93c5fd;
+					margin-bottom: 0;
+				}
+				.user-badge {
+					display: inline-flex;
+					align-items: center;
+					gap: 0.4rem;
+					background: rgba(255, 255, 255, 0.12);
+					border: 1px solid rgba(255, 255, 255, 0.25);
+					color: #ffffff;
+					padding: 0.35rem 0.75rem;
+					border-radius: 9999px;
+					font-size: 0.82rem;
+				}
+				.top-nav-bar {
+					display: flex !important;
+					justify-content: flex-start !important;
+					align-items: center;
+					gap: 0.5rem;
+					border-bottom: 2px solid #e2e8f0;
+					margin-top: 0.25rem;
+					margin-bottom: 1.25rem;
+					padding-left: 0;
+					width: 100%;
+				}
+				.top-nav-link {
+					display: inline-block;
+					padding: 0.45rem 0.65rem;
+					color: #64748b;
+					text-decoration: none;
+					font-weight: 500;
+					font-size: 0.92rem;
+					border-bottom: 3px solid transparent;
+					margin-bottom: -2px;
+					transition: all 0.2s ease-in-out;
+					white-space: nowrap;
+				}
+				.top-nav-link:hover {
+					color: #1e3a8a;
+					border-bottom-color: #93c5fd;
+				}
+				.top-nav-link.active {
+					color: #1e3a8a;
+					font-weight: 700;
+					border-bottom: 3px solid #2563eb;
+				}
+				.badge-active {
+					background-color: #dcfce7;
+					color: #15803d;
+					border: 1px solid #bbf7d0;
+					padding: 0.2rem 0.6rem;
+					border-radius: 9999px;
+					font-size: 0.75rem;
+					font-weight: 600;
+				}
+				.badge-inactive {
+					background-color: #f1f5f9;
+					color: #64748b;
+					border: 1px solid #e2e8f0;
+					padding: 0.2rem 0.6rem;
+					border-radius: 9999px;
+					font-size: 0.75rem;
+					font-weight: 600;
+				}
+				article {
+					background-color: #ffffff;
+					border: 1px solid #e2e8f0;
+					box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.04);
+					border-radius: 0.75rem;
+				}
+			</style>
 		</head>
 		<body>
-			<header class="container" style="margin-top: 1.5rem; margin-bottom: 1.5rem;">
-				<hgroup>
-					<h1>📢 NotifyEd</h1>
-					<p>Sistema de gestión de materias y avisos universitarios (SSR con templ)</p>
-				</hgroup>
+			<!-- Header superior en azul oscuro con logo oficial -->
+			<header class="app-header">
+				<div class="container" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.75rem;">
+					<div style="display: flex; align-items: center; gap: 0.75rem;">
+						<a href="/" hx-get="/" hx-target="#main-content" hx-push-url="true" style="display: flex; align-items: center; text-decoration: none;">
+							<img src="/static/logo.png" alt="Logo NotifyEd" style="height: 44px; width: auto; object-fit: contain;"/>
+						</a>
+						<div>
+							<h1 class="brand-title"><a href="/" hx-get="/" hx-target="#main-content" hx-push-url="true" style="text-decoration: none; color: inherit;">NotifyEd</a></h1>
+							<p class="brand-subtitle">Sistema de Gestión y Avisos de Cursadas</p>
+						</div>
+					</div>
+					<div class="user-badge">
+						<span class="htmx-indicator" style="font-size: 0.75rem; color: #93c5fd; margin-right: 0.25rem;">Cargando...</span>
+						<span>Profesor:</span>
+						<strong>{ professorName }</strong>
+					</div>
+				</div>
 			</header>
-			<main class="container">
-				{ children... }
+
+			<!-- Contenedor principal con la barra Top-Nav persistente y contenido dinámico SPA -->
+			<main class="container" style="flex: 1; margin-top: 0; padding-top: 0;">
+				@TopNavBar(activeTab, false)
+				<div id="main-content">
+					{ children... }
+				</div>
 			</main>
-			<footer class="container" style="margin-top: 3rem; text-align: center;">
-				<small>NotifyEd &bull; Trabajo Práctico de Programación Web &bull; Renderizado en servidor con templ</small>
+
+			<footer class="container" style="margin-top: 3rem; margin-bottom: 2rem; text-align: center; border-top: 1px solid #e2e8f0; padding-top: 1.5rem;">
+				<small style="color: #64748b;">NotifyEd &bull; Trabajo Práctico de Programación Web &bull; Server-Side Rendering con Go, templ y HTMX</small>
 			</footer>
 		</body>
 	</html>
 }
 
-// IndexPage integra el layout general, el formulario y la lista de entidades
-templ IndexPage(courses []db.Course) {
-	@Layout("NotifyEd - Gestión de Materias") {
-		<div class="grid">
-			<section>
-				@EntityForm()
-			</section>
-			<section>
-				@EntityList(courses)
-			</section>
-		</div>
-	}
+// TopNavBar renderiza la barra de navegación con atributos HTMX para navegación SPA y soporte OOB
+templ TopNavBar(activeTab string, oob bool) {
+	<nav
+		id="top-nav-bar"
+		class="top-nav-bar"
+		aria-label="Navegación principal"
+		if oob {
+			hx-swap-oob="true"
+		}
+	>
+		<a
+			href="/"
+			hx-get="/"
+			hx-target="#main-content"
+			hx-push-url="true"
+			class={ "top-nav-link", templ.KV("active", activeTab == "materias") }
+		>
+			Materias
+		</a>
+		<a
+			href="/avisos"
+			hx-get="/avisos"
+			hx-target="#main-content"
+			hx-push-url="true"
+			class={ "top-nav-link", templ.KV("active", activeTab == "avisos") }
+		>
+			Historial de avisos
+		</a>
+		<a
+			href="/alumnos"
+			hx-get="/alumnos"
+			hx-target="#main-content"
+			hx-push-url="true"
+			class={ "top-nav-link", templ.KV("active", activeTab == "alumnos") }
+		>
+			Gestión de alumnos
+		</a>
+		<a
+			href="/publicar-aviso"
+			hx-get="/publicar-aviso"
+			hx-target="#main-content"
+			hx-push-url="true"
+			class={ "top-nav-link", templ.KV("active", activeTab == "publicar") }
+		>
+			Publicar aviso
+		</a>
+	</nav>
 }
-

@@ -1,0 +1,73 @@
+package views
+
+import (
+	"fmt"
+	db "servidor-NotifyEd/db/sqlc"
+)
+
+// QRPage muestra el código QR en grande para que el profesor lo proyecte en clase
+templ QRPage(semester db.GetSemesterByTokenRow, professorName string, subscribeURL string) {
+	@Layout("NotifyEd - Código QR de Cursada", "materias", professorName) {
+		<div style="margin-bottom: 1rem;">
+			<a href="/" style="text-decoration: none; font-size: 0.9rem; color: #2563eb;">
+				&larr; Volver al panel de Materias
+			</a>
+		</div>
+
+		<article style="max-width: 580px; margin: 0 auto; text-align: center; padding: 2rem;">
+			<span class="badge" style="background-color: #eff6ff; color: #1e40af; border: 1px solid #bfdbfe; font-size: 0.82rem; font-weight: 600; padding: 0.25rem 0.75rem; border-radius: 9999px;">
+				Código QR de Suscripción
+			</span>
+
+			<h2 style="margin-top: 0.75rem; margin-bottom: 0.25rem; font-size: 1.6rem; color: #0f172a;">
+				{ semester.CourseName }
+			</h2>
+			<p style="color: #64748b; font-size: 0.95rem; margin-bottom: 1.5rem;">
+				Ciclo Lectivo { fmt.Sprintf("%d", semester.Year) } &bull; Docente: { professorName }
+			</p>
+
+			<div style="background: #ffffff; border: 2px solid #e2e8f0; border-radius: 1rem; padding: 1.5rem; display: inline-block; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); margin-bottom: 1.25rem;">
+				<img
+					src={ fmt.Sprintf("/qr/%s", semester.SubToken) }
+					alt={ fmt.Sprintf("Código QR para %s", semester.CourseName) }
+					style="width: 260px; height: 260px; display: block; margin: 0 auto;"
+				/>
+			</div>
+
+			<p style="color: #475569; font-size: 0.9rem; margin-bottom: 1rem;">
+				Escanea este código con la cámara de tu celular para registrarte y recibir las notificaciones oficiales.
+			</p>
+
+			<div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 0.75rem 1rem; margin-bottom: 1.5rem; word-break: break-all;">
+				<small style="color: #64748b; display: block; margin-bottom: 0.25rem; font-size: 0.78rem;">
+					Enlace web de suscripción directa:
+				</small>
+				<a href={ templ.SafeURL(subscribeURL) } target="_blank" style="font-weight: 600; font-size: 0.9rem; color: #1e40af;">
+					{ subscribeURL }
+				</a>
+			</div>
+
+			<div style="display: flex; gap: 0.75rem; justify-content: center; flex-wrap: wrap;">
+				<a
+					href={ templ.SafeURL(fmt.Sprintf("/qr/%s", semester.SubToken)) }
+					download={ fmt.Sprintf("qr-%s-%d.png", semester.CourseName, semester.Year) }
+					role="button"
+					class="outline"
+					style="font-size: 0.85rem; padding: 0.45rem 0.85rem;"
+				>
+					Descargar imagen PNG
+				</a>
+				<a
+					href={ templ.SafeURL(subscribeURL) }
+					target="_blank"
+					role="button"
+					class="secondary"
+					style="font-size: 0.85rem; padding: 0.45rem 0.85rem;"
+				>
+					Probar página de alumno
+				</a>
+			</div>
+		</article>
+	}
+}
+

@@ -1,0 +1,263 @@
+package views
+
+import (
+	"fmt"
+	db "servidor-NotifyEd/db/sqlc"
+)
+
+// CoursesPage renderiza la página completa de Materias y Cursadas (carga tradicional)
+templ CoursesPage(courses []db.Course, semesters []db.ListSemestersWithCourseByProfessorRow, professorName string) {
+	@Layout("NotifyEd - Materias y Cursadas", "materias", professorName) {
+		@CoursesContent(courses, semesters, false)
+	}
+}
+
+// CoursesContent renderiza el contenido de Materias y Cursadas (reutilizable en HTMX)
+templ CoursesContent(courses []db.Course, semesters []db.ListSemestersWithCourseByProfessorRow, isHTMX bool) {
+	if isHTMX {
+		@TopNavBar("materias", true)
+	}
+	<hgroup>
+		<h2>Gestión de Materias y Cursadas</h2>
+		<p>Visualiza tus materias, administra cada cursada activa o crea nuevas para el ciclo lectivo.</p>
+	</hgroup>
+
+	<div class="grid" style="margin-bottom: 2rem;">
+		<!-- Formulario: Nueva Materia -->
+		<article>
+			<header>
+				<h4>Nueva Materia</h4>
+			</header>
+			<form
+				method="POST"
+				action="/courses"
+				hx-post="/courses"
+				hx-target="#courses-list-container"
+				hx-swap="innerHTML"
+				hx-on::after-request="if(event.detail.successful) this.reset()"
+			>
+				<label for="course-name">
+					Nombre de la materia
+					<input
+						type="text"
+						id="course-name"
+						name="name"
+						placeholder="Ej: Programación Web"
+						maxlength="40"
+						required
+					/>
+				</label>
+				<button type="submit" class="primary">Crear Materia</button>
+			</form>
+		</article>
+
+		<!-- Formulario: Nueva Cursada (con contenedor reactivo para swaps OOB) -->
+		<div id="new-semester-form-container">
+			@NewSemesterForm(courses, false)
+		</div>
+	</div>
+
+	<!-- Listado de Materias con sus Cursadas asociadas -->
+	<h3>Tus Materias y Cursadas Correspondientes</h3>
+	<div id="courses-list-container">
+		@CoursesList(courses, semesters)
+	</div>
+}
+
+// NewSemesterForm renderiza el formulario de nueva cursada (con soporte para swap OOB)
+templ NewSemesterForm(courses []db.Course, oob bool) {
+	<article
+		id="new-semester-form-container"
+		if oob {
+			hx-swap-oob="true"
+		}
+	>
+		<header>
+			<h4>Nueva Cursada</h4>
+		</header>
+		if len(courses) == 0 {
+			<p><em>Primero debes crear al menos una materia para poder asignarle una cursada.</em></p>
+		} else {
+			<form
+				method="POST"
+				action="/semesters"
+				hx-post="/semesters"
+				hx-target="#courses-list-container"
+				hx-swap="innerHTML"
+			>
+				<label for="semester-course">
+					Materia
+					<select id="semester-course" name="id_course" required>
+						for _, c := range courses {
+							<option value={ c.IDCourse.String() }>{ c.Name }</option>
+						}
+					</select>
+				</label>
+				<div class="grid">
+					<label for="semester-year">
+						Año lectivo
+						<input
+							type="number"
+							id="semester-year"
+							name="year"
+							min="2020"
+							max="2035"
+							value="2026"
+							required
+						/>
+					</label>
+					<label for="semester-end-date">
+						Fecha de finalización
+						<input
+							type="date"
+							id="semester-end-date"
+							name="end_date"
+							value="2026-12-15"
+							required
+						/>
+					</label>
+				</div>
+				<button type="submit" class="secondary">Habilitar Cursada</button>
+			</form>
+		}
+	</article>
+}
+
+// CoursesList renderiza la lista de materias y cursadas
+templ CoursesList(courses []db.Course, semesters []db.ListSemestersWithCourseByProfessorRow) {
+	if len(courses) == 0 {
+		<article>
+			<p><em>No tienes materias registradas actualmente.</em></p>
+		</article>
+	} else {
+		for _, c := range courses {
+			<article style="margin-bottom: 1.5rem;" id={ "course-article-" + c.IDCourse.String() }>
+				<header style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem;">
+					<div>
+						<h4 style="margin-bottom: 0;">{ c.Name }</h4>
+						<small style="color: var(--pico-muted-color);">ID: <code>{ c.IDCourse.String() }</code></small>
+					</div>
+					<form
+						method="POST"
+						action="/courses/delete"
+						hx-post="/courses/delete"
+						hx-target="#courses-list-container"
+						hx-swap="innerHTML"
+						style="display: inline; margin: 0;"
+					>
+						<input type="hidden" name="id" value={ c.IDCourse.String() }/>
+						<button
+							type="submit"
+							class="outline secondary"
+							style="padding: 0.25rem 0.6rem; font-size: 0.8rem; margin: 0;"
+							onclick="return confirm('¿Seguro que deseas eliminar esta materia?');"
+						>
+							Eliminar Materia
+						</button>
+					</form>
+				</header>
+
+				<!-- Cursadas correspondientes a esta materia -->
+				<h5 style="margin-top: 1rem; margin-bottom: 0.5rem;">Cursadas asociadas:</h5>
+				{{
+					courseSemesters := filterSemestersByCourse(semesters, c.IDCourse)
+				}}
+				if len(courseSemesters) == 0 {
+					<p><small><em>Esta materia aún no tiene cursadas registradas. Puedes crear una en el formulario de arriba.</em></small></p>
+				} else {
+					<div class="overflow-auto">
+						<table class="striped" style="margin-bottom: 0;">
+							<thead>
+								<tr>
+									<th scope="col">Año</th>
+									<th scope="col">Fin de cursada</th>
+									<th scope="col">Alumnos Activos</th>
+									<th scope="col">Estado</th>
+									<th scope="col">Token y Código QR</th>
+									<th scope="col" style="text-align: right;">Acción</th>
+								</tr>
+							</thead>
+							<tbody>
+								for _, s := range courseSemesters {
+									<tr id={ "semester-row-" + s.IDSemester.String() }>
+										<td><strong>{ fmt.Sprintf("%d", s.Year) }</strong></td>
+										<td>{ s.EndDate.Format("02/01/2006") }</td>
+										<td>
+											<span class="badge" style="background: #f1f5f9; color: #475569; padding: 0.15rem 0.5rem; border-radius: 9999px; font-size: 0.8rem;">
+												{ fmt.Sprintf("%d alumnos", s.ActiveSubscribers) }
+											</span>
+										</td>
+										<td>
+											if s.IsOpen {
+												<span class="badge-active">Abierta / Vigente</span>
+											} else {
+												<span class="badge-inactive">Finalizada</span>
+											}
+										</td>
+										<td>
+											<details style="margin-bottom: 0;">
+												<summary style="cursor: pointer; font-size: 0.8rem; color: #1e40af; font-weight: 500;">
+													Ver QR / Token
+												</summary>
+												<div style="margin-top: 0.5rem; display: flex; flex-direction: column; gap: 0.4rem; align-items: flex-start;">
+													<div>
+														<small style="color: #64748b; font-size: 0.72rem; display: block;">Token:</small>
+														<code style="font-size: 0.78rem; background: #eff6ff; color: #1e40af; border: 1px solid #bfdbfe; padding: 0.1rem 0.35rem; border-radius: 4px;">{ s.SubToken }</code>
+													</div>
+													<div style="display: flex; gap: 0.4rem; align-items: center; margin-top: 0.2rem; flex-wrap: wrap;">
+														<a
+															href={ templ.SafeURL(fmt.Sprintf("/cursadas/%s/qr", s.SubToken)) }
+															target="_blank"
+															role="button"
+															class="outline"
+															style="padding: 0.2rem 0.5rem; font-size: 0.75rem; text-decoration: none;"
+														>
+															Proyectar QR
+														</a>
+														<a
+															href={ templ.SafeURL(fmt.Sprintf("/subscribir/%s", s.SubToken)) }
+															target="_blank"
+															style="font-size: 0.75rem; text-decoration: none; color: #2563eb;"
+														>
+															Link Alumno
+														</a>
+													</div>
+												</div>
+											</details>
+										</td>
+										<td style="text-align: right;">
+											<form
+												method="POST"
+												action="/semesters/delete"
+												hx-post="/semesters/delete"
+												hx-target="#courses-list-container"
+												hx-swap="innerHTML"
+												style="display: inline; margin: 0;"
+											>
+												<input type="hidden" name="id" value={ s.IDSemester.String() }/>
+												<button
+													type="submit"
+													class="outline secondary"
+													style="padding: 0.2rem 0.5rem; font-size: 0.75rem; margin: 0;"
+													onclick="return confirm('¿Seguro que deseas eliminar esta cursada? Se eliminarán sus avisos e inscripciones asociadas.');"
+												>
+													Eliminar Cursada
+												</button>
+											</form>
+										</td>
+									</tr>
+								}
+							</tbody>
+						</table>
+					</div>
+				}
+			</article>
+		}
+	}
+}
+
+// CourseCreatedResponse devuelve la lista actualizada más el formulario OOB
+templ CourseCreatedResponse(courses []db.Course, semesters []db.ListSemestersWithCourseByProfessorRow) {
+	@CoursesList(courses, semesters)
+	@NewSemesterForm(courses, true)
+}

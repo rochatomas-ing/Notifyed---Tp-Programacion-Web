@@ -9,10 +9,9 @@ package views
 import "github.com/a-h/templ"
 import templruntime "github.com/a-h/templ/runtime"
 
-import db "servidor-NotifyEd/db/sqlc"
-
-// Layout define la estructura base HTML con Pico.css como hoja de estilos
-func Layout(title string) templ.Component {
+// Layout define la estructura base HTML con Pico.css, estética refinada (azul oscuro con tonos claros)
+// y barra top-nav con indicador iluminado inferior para el apartado activo.
+func Layout(title string, activeTab string, professorName string) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
@@ -30,20 +29,41 @@ func Layout(title string) templ.Component {
 		ctx = templ.InitializeContext(ctx)
 		templ_7745c5c3_Var1 := templ.GetChildren(ctx)
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<!doctype html><html lang=\"es\"><head><meta charset=\"UTF-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\"><title>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<!doctype html><html lang=\"es\" data-theme=\"light\"><head><meta charset=\"UTF-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\"><title>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var2 string
 		templ_7745c5c3_Var2, templ_7745c5c3_Err = templ.JoinStringErrs(title)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/layout.templ`, Line: 12, Col: 17}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/layout.templ`, Line: 11, Col: 17}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var2))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "</title><!-- Pico.css CDN para estilos limpios y semánticos --><link rel=\"stylesheet\" href=\"https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css\"></head><body><header class=\"container\" style=\"margin-top: 1.5rem; margin-bottom: 1.5rem;\"><hgroup><h1>📢 NotifyEd</h1><p>Sistema de gestión de materias y avisos universitarios (SSR con templ)</p></hgroup></header><main class=\"container\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "</title><!-- Pico.css v2 CDN --><link rel=\"stylesheet\" href=\"https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css\"><!-- HTMX para dinamismo SPA y actualizaciones parciales OOB --><script src=\"/static/htmx.min.js\"></script><style>\n\t\t\t\t:root {\n\t\t\t\t\t--pico-primary: #1e40af;\n\t\t\t\t\t--pico-primary-background: #1e40af;\n\t\t\t\t\t--pico-primary-hover: #1d4ed8;\n\t\t\t\t\t--pico-primary-hover-background: #1d4ed8;\n\t\t\t\t\t--pico-primary-focus: rgba(30, 64, 175, 0.2);\n\t\t\t\t\t--pico-background-color: #f8fafc;\n\t\t\t\t\t--pico-card-background-color: #ffffff;\n\t\t\t\t\t--pico-muted-border-color: #e2e8f0;\n\t\t\t\t\t--pico-color: #1e293b;\n\t\t\t\t}\n\t\t\t\tbody {\n\t\t\t\t\tbackground-color: #f8fafc;\n\t\t\t\t\tcolor: #1e293b;\n\t\t\t\t\tmin-height: 100vh;\n\t\t\t\t\tdisplay: flex;\n\t\t\t\t\tflex-direction: column;\n\t\t\t\t}\n\t\t\t\t.htmx-indicator {\n\t\t\t\t\tdisplay: none;\n\t\t\t\t}\n\t\t\t\t.htmx-request .htmx-indicator,\n\t\t\t\t.htmx-request.htmx-indicator {\n\t\t\t\t\tdisplay: inline-block;\n\t\t\t\t}\n\t\t\t\t.app-header {\n\t\t\t\t\tbackground: linear-gradient(135deg, #0f172a 0%, #1e3a8a 100%);\n\t\t\t\t\tcolor: #ffffff;\n\t\t\t\t\tpadding: 0.7rem 0;\n\t\t\t\t\tmargin-bottom: 0;\n\t\t\t\t\tbox-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.07);\n\t\t\t\t}\n\t\t\t\t.brand-title {\n\t\t\t\t\tfont-size: 1.5rem;\n\t\t\t\t\tfont-weight: 700;\n\t\t\t\t\tletter-spacing: -0.025em;\n\t\t\t\t\tcolor: #ffffff;\n\t\t\t\t\tmargin-bottom: 0;\n\t\t\t\t}\n\t\t\t\t.brand-subtitle {\n\t\t\t\t\tfont-size: 0.82rem;\n\t\t\t\t\tcolor: #93c5fd;\n\t\t\t\t\tmargin-bottom: 0;\n\t\t\t\t}\n\t\t\t\t.user-badge {\n\t\t\t\t\tdisplay: inline-flex;\n\t\t\t\t\talign-items: center;\n\t\t\t\t\tgap: 0.4rem;\n\t\t\t\t\tbackground: rgba(255, 255, 255, 0.12);\n\t\t\t\t\tborder: 1px solid rgba(255, 255, 255, 0.25);\n\t\t\t\t\tcolor: #ffffff;\n\t\t\t\t\tpadding: 0.35rem 0.75rem;\n\t\t\t\t\tborder-radius: 9999px;\n\t\t\t\t\tfont-size: 0.82rem;\n\t\t\t\t}\n\t\t\t\t.top-nav-bar {\n\t\t\t\t\tdisplay: flex !important;\n\t\t\t\t\tjustify-content: flex-start !important;\n\t\t\t\t\talign-items: center;\n\t\t\t\t\tgap: 0.5rem;\n\t\t\t\t\tborder-bottom: 2px solid #e2e8f0;\n\t\t\t\t\tmargin-top: 0.25rem;\n\t\t\t\t\tmargin-bottom: 1.25rem;\n\t\t\t\t\tpadding-left: 0;\n\t\t\t\t\twidth: 100%;\n\t\t\t\t}\n\t\t\t\t.top-nav-link {\n\t\t\t\t\tdisplay: inline-block;\n\t\t\t\t\tpadding: 0.45rem 0.65rem;\n\t\t\t\t\tcolor: #64748b;\n\t\t\t\t\ttext-decoration: none;\n\t\t\t\t\tfont-weight: 500;\n\t\t\t\t\tfont-size: 0.92rem;\n\t\t\t\t\tborder-bottom: 3px solid transparent;\n\t\t\t\t\tmargin-bottom: -2px;\n\t\t\t\t\ttransition: all 0.2s ease-in-out;\n\t\t\t\t\twhite-space: nowrap;\n\t\t\t\t}\n\t\t\t\t.top-nav-link:hover {\n\t\t\t\t\tcolor: #1e3a8a;\n\t\t\t\t\tborder-bottom-color: #93c5fd;\n\t\t\t\t}\n\t\t\t\t.top-nav-link.active {\n\t\t\t\t\tcolor: #1e3a8a;\n\t\t\t\t\tfont-weight: 700;\n\t\t\t\t\tborder-bottom: 3px solid #2563eb;\n\t\t\t\t}\n\t\t\t\t.badge-active {\n\t\t\t\t\tbackground-color: #dcfce7;\n\t\t\t\t\tcolor: #15803d;\n\t\t\t\t\tborder: 1px solid #bbf7d0;\n\t\t\t\t\tpadding: 0.2rem 0.6rem;\n\t\t\t\t\tborder-radius: 9999px;\n\t\t\t\t\tfont-size: 0.75rem;\n\t\t\t\t\tfont-weight: 600;\n\t\t\t\t}\n\t\t\t\t.badge-inactive {\n\t\t\t\t\tbackground-color: #f1f5f9;\n\t\t\t\t\tcolor: #64748b;\n\t\t\t\t\tborder: 1px solid #e2e8f0;\n\t\t\t\t\tpadding: 0.2rem 0.6rem;\n\t\t\t\t\tborder-radius: 9999px;\n\t\t\t\t\tfont-size: 0.75rem;\n\t\t\t\t\tfont-weight: 600;\n\t\t\t\t}\n\t\t\t\tarticle {\n\t\t\t\t\tbackground-color: #ffffff;\n\t\t\t\t\tborder: 1px solid #e2e8f0;\n\t\t\t\t\tbox-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.04);\n\t\t\t\t\tborder-radius: 0.75rem;\n\t\t\t\t}\n\t\t\t</style></head><body><!-- Header superior en azul oscuro con logo oficial --><header class=\"app-header\"><div class=\"container\" style=\"display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.75rem;\"><div style=\"display: flex; align-items: center; gap: 0.75rem;\"><a href=\"/\" hx-get=\"/\" hx-target=\"#main-content\" hx-push-url=\"true\" style=\"display: flex; align-items: center; text-decoration: none;\"><img src=\"/static/logo.png\" alt=\"Logo NotifyEd\" style=\"height: 44px; width: auto; object-fit: contain;\"></a><div><h1 class=\"brand-title\"><a href=\"/\" hx-get=\"/\" hx-target=\"#main-content\" hx-push-url=\"true\" style=\"text-decoration: none; color: inherit;\">NotifyEd</a></h1><p class=\"brand-subtitle\">Sistema de Gestión y Avisos de Cursadas</p></div></div><div class=\"user-badge\"><span class=\"htmx-indicator\" style=\"font-size: 0.75rem; color: #93c5fd; margin-right: 0.25rem;\">Cargando...</span> <span>Profesor:</span> <strong>")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		var templ_7745c5c3_Var3 string
+		templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.JoinStringErrs(professorName)
+		if templ_7745c5c3_Err != nil {
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/layout.templ`, Line: 146, Col: 29}
+		}
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var3))
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "</strong></div></div></header><!-- Contenedor principal con la barra Top-Nav persistente y contenido dinámico SPA --><main class=\"container\" style=\"flex: 1; margin-top: 0; padding-top: 0;\">")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = TopNavBar(activeTab, false).Render(ctx, templ_7745c5c3_Buffer)
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, "<div id=\"main-content\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -51,7 +71,7 @@ func Layout(title string) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "</main><footer class=\"container\" style=\"margin-top: 3rem; text-align: center;\"><small>NotifyEd &bull; Trabajo Práctico de Programación Web &bull; Renderizado en servidor con templ</small></footer></body></html>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "</div></main><footer class=\"container\" style=\"margin-top: 3rem; margin-bottom: 2rem; text-align: center; border-top: 1px solid #e2e8f0; padding-top: 1.5rem;\"><small style=\"color: #64748b;\">NotifyEd &bull; Trabajo Práctico de Programación Web &bull; Server-Side Rendering con Go, templ y HTMX</small></footer></body></html>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -59,8 +79,8 @@ func Layout(title string) templ.Component {
 	})
 }
 
-// IndexPage integra el layout general, el formulario y la lista de entidades
-func IndexPage(courses []db.Course) templ.Component {
+// TopNavBar renderiza la barra de navegación con atributos HTMX para navegación SPA y soporte OOB
+func TopNavBar(activeTab string, oob bool) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
@@ -77,41 +97,177 @@ func IndexPage(courses []db.Course) templ.Component {
 		}
 		ctx = templ.InitializeContext(ctx)
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Var4 := templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
-			templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
-			templ_7745c5c3_Buffer, templ_7745c5c3_IsBuffer := templruntime.GetBuffer(templ_7745c5c3_W)
-			if !templ_7745c5c3_IsBuffer {
-				defer func() {
-					templ_7745c5c3_BufErr := templruntime.ReleaseBuffer(templ_7745c5c3_Buffer)
-					if templ_7745c5c3_Err == nil {
-						templ_7745c5c3_Err = templ_7745c5c3_BufErr
-					}
-				}()
-			}
-			ctx = templ.InitializeContext(ctx)
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, "<div class=\"grid\"><section>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 6, "<nav id=\"top-nav-bar\" class=\"top-nav-bar\" aria-label=\"Navegación principal\"")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		if oob {
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 7, " hx-swap-oob=\"true\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = EntityForm().Render(ctx, templ_7745c5c3_Buffer)
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 8, ">")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		{
+			templ_7745c5c3_ElementWriter := templ_7745c5c3_Buffer
+			templ_7745c5c3_Buffer := templ.GetBuffer()
+			var templ_7745c5c3_ElementScripts []templ.ComponentScript
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 9, "<a href=\"/\" hx-get=\"/\" hx-target=\"#main-content\" hx-push-url=\"true\" class=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "</section><section>")
+			var templ_7745c5c3_Var5 = []any{"top-nav-link", templ.KV("active", activeTab == "materias")}
+			templ_7745c5c3_Err = templ.RenderCSSItems(ctx, templ_7745c5c3_ElementWriter, templ_7745c5c3_Var5...)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = EntityList(courses).Render(ctx, templ_7745c5c3_Buffer)
+			var templ_7745c5c3_Var6 string
+			templ_7745c5c3_Var6, templ_7745c5c3_Err = templruntime.NewAttributeExpression(templ.CSSClasses(templ_7745c5c3_Var5).String()).Resolve(ctx)
+			if templ_7745c5c3_Err != nil {
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/layout.templ`, Line: 1, Col: 0}
+			}
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var6)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 6, "</section></div>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 10, "\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			return nil
-		})
-		templ_7745c5c3_Err = Layout("NotifyEd - Gestión de Materias").Render(templ.WithChildren(ctx, templ_7745c5c3_Var4), templ_7745c5c3_Buffer)
+			templ_7745c5c3_Err = templ.RenderScriptItems(ctx, templ_7745c5c3_ElementWriter, templ_7745c5c3_ElementScripts...)
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteTo(templ_7745c5c3_ElementWriter)
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ.ReleaseBuffer(templ_7745c5c3_Buffer)
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 11, ">Materias</a> ")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		{
+			templ_7745c5c3_ElementWriter := templ_7745c5c3_Buffer
+			templ_7745c5c3_Buffer := templ.GetBuffer()
+			var templ_7745c5c3_ElementScripts []templ.ComponentScript
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 12, "<a href=\"/avisos\" hx-get=\"/avisos\" hx-target=\"#main-content\" hx-push-url=\"true\" class=\"")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			var templ_7745c5c3_Var7 = []any{"top-nav-link", templ.KV("active", activeTab == "avisos")}
+			templ_7745c5c3_Err = templ.RenderCSSItems(ctx, templ_7745c5c3_ElementWriter, templ_7745c5c3_Var7...)
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			var templ_7745c5c3_Var8 string
+			templ_7745c5c3_Var8, templ_7745c5c3_Err = templruntime.NewAttributeExpression(templ.CSSClasses(templ_7745c5c3_Var7).String()).Resolve(ctx)
+			if templ_7745c5c3_Err != nil {
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/layout.templ`, Line: 1, Col: 0}
+			}
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var8)
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 13, "\"")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = templ.RenderScriptItems(ctx, templ_7745c5c3_ElementWriter, templ_7745c5c3_ElementScripts...)
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteTo(templ_7745c5c3_ElementWriter)
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ.ReleaseBuffer(templ_7745c5c3_Buffer)
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 14, ">Historial de avisos</a> ")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		{
+			templ_7745c5c3_ElementWriter := templ_7745c5c3_Buffer
+			templ_7745c5c3_Buffer := templ.GetBuffer()
+			var templ_7745c5c3_ElementScripts []templ.ComponentScript
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 15, "<a href=\"/alumnos\" hx-get=\"/alumnos\" hx-target=\"#main-content\" hx-push-url=\"true\" class=\"")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			var templ_7745c5c3_Var9 = []any{"top-nav-link", templ.KV("active", activeTab == "alumnos")}
+			templ_7745c5c3_Err = templ.RenderCSSItems(ctx, templ_7745c5c3_ElementWriter, templ_7745c5c3_Var9...)
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			var templ_7745c5c3_Var10 string
+			templ_7745c5c3_Var10, templ_7745c5c3_Err = templruntime.NewAttributeExpression(templ.CSSClasses(templ_7745c5c3_Var9).String()).Resolve(ctx)
+			if templ_7745c5c3_Err != nil {
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/layout.templ`, Line: 1, Col: 0}
+			}
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var10)
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 16, "\"")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = templ.RenderScriptItems(ctx, templ_7745c5c3_ElementWriter, templ_7745c5c3_ElementScripts...)
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteTo(templ_7745c5c3_ElementWriter)
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ.ReleaseBuffer(templ_7745c5c3_Buffer)
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 17, ">Gestión de alumnos</a> ")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		{
+			templ_7745c5c3_ElementWriter := templ_7745c5c3_Buffer
+			templ_7745c5c3_Buffer := templ.GetBuffer()
+			var templ_7745c5c3_ElementScripts []templ.ComponentScript
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 18, "<a href=\"/publicar-aviso\" hx-get=\"/publicar-aviso\" hx-target=\"#main-content\" hx-push-url=\"true\" class=\"")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			var templ_7745c5c3_Var11 = []any{"top-nav-link", templ.KV("active", activeTab == "publicar")}
+			templ_7745c5c3_Err = templ.RenderCSSItems(ctx, templ_7745c5c3_ElementWriter, templ_7745c5c3_Var11...)
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			var templ_7745c5c3_Var12 string
+			templ_7745c5c3_Var12, templ_7745c5c3_Err = templruntime.NewAttributeExpression(templ.CSSClasses(templ_7745c5c3_Var11).String()).Resolve(ctx)
+			if templ_7745c5c3_Err != nil {
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/layout.templ`, Line: 1, Col: 0}
+			}
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var12)
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 19, "\"")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = templ.RenderScriptItems(ctx, templ_7745c5c3_ElementWriter, templ_7745c5c3_ElementScripts...)
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteTo(templ_7745c5c3_ElementWriter)
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ.ReleaseBuffer(templ_7745c5c3_Buffer)
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 20, ">Publicar aviso</a></nav>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

@@ -215,6 +215,67 @@ func (q *Queries) ListSemestersByProfessor(ctx context.Context, professorID uuid
 	return items, nil
 }
 
+const listSemestersWithCourseByProfessor = `-- name: ListSemestersWithCourseByProfessor :many
+SELECT
+    s.id_semester,
+    s.id_course,
+    s.year,
+    s.sub_token,
+    s.end_date,
+    (s.end_date >= CURRENT_DATE) AS is_open,
+    c.name AS course_name,
+    COUNT(i.id_inscription) FILTER (WHERE i.active) AS active_subscribers
+FROM semesters s
+JOIN courses c ON c.id_course = s.id_course
+LEFT JOIN inscriptions i ON i.id_semester = s.id_semester
+WHERE s.professor_id = $1
+GROUP BY s.id_semester, c.name, c.id_course
+ORDER BY c.name, s.year DESC
+`
+
+type ListSemestersWithCourseByProfessorRow struct {
+	IDSemester        uuid.UUID `json:"id_semester"`
+	IDCourse          uuid.UUID `json:"id_course"`
+	Year              int32     `json:"year"`
+	SubToken          string    `json:"sub_token"`
+	EndDate           time.Time `json:"end_date"`
+	IsOpen            bool      `json:"is_open"`
+	CourseName        string    `json:"course_name"`
+	ActiveSubscribers int64     `json:"active_subscribers"`
+}
+
+func (q *Queries) ListSemestersWithCourseByProfessor(ctx context.Context, professorID uuid.UUID) ([]ListSemestersWithCourseByProfessorRow, error) {
+	rows, err := q.db.QueryContext(ctx, listSemestersWithCourseByProfessor, professorID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListSemestersWithCourseByProfessorRow
+	for rows.Next() {
+		var i ListSemestersWithCourseByProfessorRow
+		if err := rows.Scan(
+			&i.IDSemester,
+			&i.IDCourse,
+			&i.Year,
+			&i.SubToken,
+			&i.EndDate,
+			&i.IsOpen,
+			&i.CourseName,
+			&i.ActiveSubscribers,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const updateSemesterEndDate = `-- name: UpdateSemesterEndDate :one
 UPDATE semesters
 SET end_date = $2

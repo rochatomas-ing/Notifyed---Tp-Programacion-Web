@@ -46,3 +46,24 @@ WHERE id_semester = $1 AND email = $2;
 -- name: DeleteInscription :execrows
 DELETE FROM inscriptions
 WHERE id_inscription = $1;
+
+-- name: ListInscriptionsByEmailAndProfessor :many
+SELECT
+    i.id_inscription,
+    i.id_semester,
+    i.email,
+    i.active,
+    i.created_at,
+    s.year AS semester_year,
+    c.name AS course_name
+FROM inscriptions i
+JOIN semesters s ON s.id_semester = i.id_semester
+JOIN courses c ON c.id_course = s.id_course
+WHERE LOWER(TRIM(i.email)) = LOWER(TRIM($1)) AND s.professor_id = $2
+ORDER BY s.year DESC, c.name;
+
+-- name: UpdateInscriptionActiveById :one
+UPDATE inscriptions
+SET active = $2
+WHERE id_inscription = $1
+RETURNING *;

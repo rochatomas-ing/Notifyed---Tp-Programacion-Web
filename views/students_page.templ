@@ -1,0 +1,186 @@
+package views
+
+import (
+	"fmt"
+	db "servidor-NotifyEd/db/sqlc"
+)
+
+// StudentsPage renderiza la página completa de Gestión de Alumnos (carga tradicional)
+templ StudentsPage(
+	searchTerm string,
+	inscriptions []db.ListInscriptionsByEmailAndProfessorRow,
+	searched bool,
+	professorName string,
+) {
+	@Layout("NotifyEd - Gestión de Alumnos", "alumnos", professorName) {
+		@StudentsContent(searchTerm, inscriptions, searched, false)
+	}
+}
+
+// StudentsContent renderiza el contenido de Gestión de Alumnos (reutilizable en HTMX)
+templ StudentsContent(
+	searchTerm string,
+	inscriptions []db.ListInscriptionsByEmailAndProfessorRow,
+	searched bool,
+	isHTMX bool,
+) {
+	if isHTMX {
+		@TopNavBar("alumnos", true)
+	}
+	<hgroup>
+		<h2>Gestión de Alumnos</h2>
+		<p>Busca alumnos por correo electrónico para verificar sus inscripciones en tus cursadas y gestionarlos.</p>
+	</hgroup>
+
+	<!-- Buscador de alumnos con búsqueda en tiempo real (Slide 45: hx-trigger="keyup changed delay:400ms") -->
+	<article style="padding: 1.5rem; margin-bottom: 2rem;">
+		<form
+			method="GET"
+			action="/alumnos"
+			hx-get="/alumnos"
+			hx-target="#students-results-container"
+			hx-swap="innerHTML"
+			hx-push-url="true"
+			style="margin-bottom: 0;"
+		>
+			<label for="search-email">
+				Correo electrónico del alumno
+				<div style="display: flex; gap: 0.75rem; flex-wrap: wrap;">
+					<input
+						type="email"
+						id="search-email"
+						name="email"
+						placeholder="ejemplo: alumno@universidad.edu.ar"
+						value={ searchTerm }
+						required
+						hx-get="/alumnos"
+						hx-trigger="keyup changed delay:400ms, search"
+						hx-target="#students-results-container"
+						hx-swap="innerHTML"
+						hx-push-url="true"
+						style="flex: 1; min-width: 250px; margin-bottom: 0;"
+					/>
+					<button type="submit" class="primary" style="width: auto; margin-bottom: 0;">
+						Buscar Alumno
+					</button>
+				</div>
+			</label>
+		</form>
+	</article>
+
+	<!-- Contenedor dinámico de resultados de búsqueda -->
+	<div id="students-results-container">
+		@StudentsResults(searchTerm, inscriptions, searched)
+	</div>
+}
+
+// StudentsResults renderiza la tabla de resultados de búsqueda
+templ StudentsResults(searchTerm string, inscriptions []db.ListInscriptionsByEmailAndProfessorRow, searched bool) {
+	if searched {
+		<h3>Resultados de la búsqueda: <code>{ searchTerm }</code></h3>
+		if len(inscriptions) == 0 {
+			<article style="text-align: center; padding: 2.5rem 1rem;">
+				<h4>No se encontraron inscripciones</h4>
+				<p><em>El alumno con correo <strong>{ searchTerm }</strong> no está inscripto en ninguna de tus cursadas actuales.</em></p>
+			</article>
+		} else {
+			<article>
+				<div class="overflow-auto">
+					<table class="striped" style="margin-bottom: 0;">
+						<thead>
+							<tr>
+								<th scope="col">Materia</th>
+								<th scope="col">Cursada (Año)</th>
+								<th scope="col">Fecha de Inscripción</th>
+								<th scope="col">Estado de Suscripción</th>
+								<th scope="col" style="text-align: right;">Acciones</th>
+							</tr>
+						</thead>
+						<tbody>
+							for _, item := range inscriptions {
+								@StudentRow(item, searchTerm)
+							}
+						</tbody>
+					</table>
+				</div>
+			</article>
+		}
+	} else {
+		<article style="text-align: center; color: var(--pico-muted-color); padding: 3rem 1rem;">
+			<p>Ingresa el email de un alumno arriba para consultar sus inscripciones y gestionar su estado.</p>
+		</article>
+	}
+}
+
+// StudentRow renderiza una fila individual de alumno (reemplazable in-situ vía HTMX)
+templ StudentRow(item db.ListInscriptionsByEmailAndProfessorRow, searchTerm string) {
+	<tr id={ "student-row-" + item.IDInscription.String() }>
+		<td><strong>{ item.CourseName }</strong></td>
+		<td>Cursada { fmt.Sprintf("%d", item.SemesterYear) }</td>
+		<td>{ item.CreatedAt.Format("02/01/2006") }</td>
+		<td>
+			if item.Active {
+				<span class="badge-active">Activo (Recibe avisos)</span>
+			} else {
+				<span class="badge-inactive">Baja manual</span>
+			}
+		</td>
+		<td style="text-align: right;">
+			<div style="display: inline-flex; gap: 0.4rem; justify-content: flex-end;">
+				<!-- Botón para alternar baja / reactivación (actualización in-situ con hx-swap="outerHTML") -->
+				<form
+					method="POST"
+					action="/alumnos/toggle"
+					hx-post="/alumnos/toggle"
+					hx-target={ "#student-row-" + item.IDInscription.String() }
+					hx-swap="outerHTML"
+					style="margin: 0;"
+				>
+					<input type="hidden" name="id" value={ item.IDInscription.String() }/>
+					<input type="hidden" name="email" value={ searchTerm }/>
+					if item.Active {
+						<input type="hidden" name="active" value="false"/>
+						<button
+							type="submit"
+							class="outline secondary"
+							style="padding: 0.25rem 0.6rem; font-size: 0.75rem; margin: 0;"
+							onclick="return confirm('¿Deseas dar de baja a este alumno? Ya no recibirá avisos de esta cursada.');"
+						>
+							Dar de baja
+						</button>
+					} else {
+						<input type="hidden" name="active" value="true"/>
+						<button
+							type="submit"
+							class="outline primary"
+							style="padding: 0.25rem 0.6rem; font-size: 0.75rem; margin: 0;"
+						>
+							Reactivar
+						</button>
+					}
+				</form>
+
+				<!-- Botón para eliminar definitivamente (eliminación de fila en el DOM con hx-swap="delete") -->
+				<form
+					method="POST"
+					action="/alumnos/delete"
+					hx-post="/alumnos/delete"
+					hx-target={ "#student-row-" + item.IDInscription.String() }
+					hx-swap="delete"
+					style="margin: 0;"
+				>
+					<input type="hidden" name="id" value={ item.IDInscription.String() }/>
+					<input type="hidden" name="email" value={ searchTerm }/>
+					<button
+						type="submit"
+						class="outline secondary"
+						style="padding: 0.25rem 0.6rem; font-size: 0.75rem; margin: 0;"
+						onclick="return confirm('¿Seguro que deseas eliminar el registro de inscripción de este alumno?');"
+					>
+						Eliminar
+					</button>
+				</form>
+			</div>
+		</td>
+	</tr>
+}

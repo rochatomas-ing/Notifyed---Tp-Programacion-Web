@@ -13,7 +13,7 @@ export DB_HOST DB_PORT DB_USER DB_PASSWORD DB_NAME DB_SSLMODE
 export TEST_DB_URL := postgres://$(POSTGRES_USER):$(POSTGRES_PASSWORD)@localhost:$(POSTGRES_PORT)/$(POSTGRES_DB)?sslmode=disable
 COMPOSE := docker compose -p notifyed
 
-.PHONY: all build down up up-all run test api clean generate
+.PHONY: all build down up up-all run test test-http api clean generate
 
 all:
 	@$(MAKE) --no-print-directory build
@@ -51,8 +51,12 @@ build: generate
 	@go build -o tmp/$(APP_NAME) .
 
 test:
-	@echo "Corriendo los tests..."
-	@go test -v ./db/sqlc
+	@echo "Corriendo los tests de base de datos y la suite HTTP SSR..."
+	@go test -v ./db/sqlc .
+
+test-http:
+	@echo "Corriendo la suite HTTP de recorridos SSR..."
+	@go test -v -run TestHTTPSuite .
 
 clean:
 	@echo "Limpiando archivos generados..."
