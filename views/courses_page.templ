@@ -6,14 +6,14 @@ import (
 )
 
 // CoursesPage renderiza la página completa de Materias y Cursadas (carga tradicional)
-templ CoursesPage(courses []db.Course, semesters []db.ListSemestersWithCourseByProfessorRow, professorName string) {
+templ CoursesPage(courses []db.Course, semesters []db.ListSemestersWithCourseByProfessorRow, expandedCourseID string, professorName string) {
 	@Layout("NotifyEd - Materias y Cursadas", "materias", professorName) {
-		@CoursesContent(courses, semesters, false)
+		@CoursesContent(courses, semesters, expandedCourseID, false)
 	}
 }
 
 // CoursesContent renderiza el contenido de Materias y Cursadas (reutilizable en HTMX)
-templ CoursesContent(courses []db.Course, semesters []db.ListSemestersWithCourseByProfessorRow, isHTMX bool) {
+templ CoursesContent(courses []db.Course, semesters []db.ListSemestersWithCourseByProfessorRow, expandedCourseID string, isHTMX bool) {
 	if isHTMX {
 		@TopNavBar("materias", true)
 	}
@@ -57,10 +57,10 @@ templ CoursesContent(courses []db.Course, semesters []db.ListSemestersWithCourse
 		</div>
 	</div>
 
-	<!-- Listado de Materias con sus Cursadas asociadas -->
+	<!-- Listado de Materias con despliegue bajo demanda de sus Cursadas -->
 	<h3>Tus Materias y Cursadas Correspondientes</h3>
 	<div id="courses-list-container">
-		@CoursesList(courses, semesters)
+		@CoursesList(courses, semesters, expandedCourseID)
 	</div>
 }
 
@@ -123,47 +123,79 @@ templ NewSemesterForm(courses []db.Course, oob bool) {
 	</article>
 }
 
-// CoursesList renderiza la lista de materias y cursadas
-templ CoursesList(courses []db.Course, semesters []db.ListSemestersWithCourseByProfessorRow) {
+// CoursesList renderiza la lista de materias (con cursadas colapsadas por defecto)
+templ CoursesList(courses []db.Course, semesters []db.ListSemestersWithCourseByProfessorRow, expandedCourseID string) {
 	if len(courses) == 0 {
 		<article>
 			<p><em>No tienes materias registradas actualmente.</em></p>
 		</article>
 	} else {
 		for _, c := range courses {
-			<article style="margin-bottom: 1.5rem;" id={ "course-article-" + c.IDCourse.String() }>
-				<header style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem;">
-					<div>
-						<h4 style="margin-bottom: 0;">{ c.Name }</h4>
-						<small style="color: var(--pico-muted-color);">ID: <code>{ c.IDCourse.String() }</code></small>
-					</div>
-					<form
-						method="POST"
-						action="/courses/delete"
-						hx-post="/courses/delete"
-						hx-target="#courses-list-container"
-						hx-swap="innerHTML"
-						style="display: inline; margin: 0;"
-					>
-						<input type="hidden" name="id" value={ c.IDCourse.String() }/>
-						<button
-							type="submit"
-							class="outline secondary"
-							style="padding: 0.25rem 0.6rem; font-size: 0.8rem; margin: 0;"
-							onclick="return confirm('¿Seguro que deseas eliminar esta materia?');"
-						>
-							Eliminar Materia
-						</button>
-					</form>
-				</header>
+			{{
+				courseSemesters := FilterSemestersByCourse(semesters, c.IDCourse)
+			}}
+			@CourseCard(c, courseSemesters, c.IDCourse.String() == expandedCourseID)
+		}
+	}
+}
 
-				<!-- Cursadas correspondientes a esta materia -->
-				<h5 style="margin-top: 1rem; margin-bottom: 0.5rem;">Cursadas asociadas:</h5>
-				{{
-					courseSemesters := filterSemestersByCourse(semesters, c.IDCourse)
-				}}
+// CourseCard renderiza una materia individual y despliega sus cursadas bajo demanda con HTMX
+templ CourseCard(c db.Course, courseSemesters []db.ListSemestersWithCourseByProfessorRow, expanded bool) {
+	<article style="margin-bottom: 1rem; padding: 1.15rem 1.35rem;" id={ "course-article-" + c.IDCourse.String() }>
+		<div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.75rem;">
+			<h4 style="margin: 0;">{ c.Name }</h4>
+			<div style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
+				if expanded {
+					<a
+						href="/"
+						hx-get={ fmt.Sprintf("/courses/%s/cursadas?open=false", c.IDCourse.String()) }
+						hx-target={ "#course-article-" + c.IDCourse.String() }
+						hx-swap="outerHTML"
+						role="button"
+						class="outline"
+						style="padding: 0.25rem 0.65rem; font-size: 0.8rem; margin: 0;"
+					>
+						Ocultar cursadas ({ fmt.Sprintf("%d", len(courseSemesters)) })
+					</a>
+				} else {
+					<a
+						href={ templ.SafeURL("/?expanded=" + c.IDCourse.String()) }
+						hx-get={ fmt.Sprintf("/courses/%s/cursadas?open=true", c.IDCourse.String()) }
+						hx-target={ "#course-article-" + c.IDCourse.String() }
+						hx-swap="outerHTML"
+						role="button"
+						class="outline"
+						style="padding: 0.25rem 0.65rem; font-size: 0.8rem; margin: 0;"
+					>
+						Ver cursadas ({ fmt.Sprintf("%d", len(courseSemesters)) })
+					</a>
+				}
+				<form
+					method="POST"
+					action="/courses/delete"
+					hx-post="/courses/delete"
+					hx-target="#courses-list-container"
+					hx-swap="innerHTML"
+					style="display: inline; margin: 0;"
+				>
+					<input type="hidden" name="id" value={ c.IDCourse.String() }/>
+					<button
+						type="submit"
+						class="outline secondary"
+						style="padding: 0.25rem 0.6rem; font-size: 0.8rem; margin: 0;"
+						onclick="return confirm('¿Seguro que deseas eliminar esta materia?');"
+					>
+						Eliminar Materia
+					</button>
+				</form>
+			</div>
+		</div>
+
+		if expanded {
+			<div style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--pico-muted-border-color);">
+				<h5 style="margin-top: 0; margin-bottom: 0.65rem;">Cursadas asociadas:</h5>
 				if len(courseSemesters) == 0 {
-					<p><small><em>Esta materia aún no tiene cursadas registradas. Puedes crear una en el formulario de arriba.</em></small></p>
+					<p style="margin-bottom: 0;"><small><em>Esta materia aún no tiene cursadas registradas. Puedes crear una en el formulario de arriba.</em></small></p>
 				} else {
 					<div class="overflow-auto">
 						<table class="striped" style="margin-bottom: 0;">
@@ -230,11 +262,12 @@ templ CoursesList(courses []db.Course, semesters []db.ListSemestersWithCourseByP
 												method="POST"
 												action="/semesters/delete"
 												hx-post="/semesters/delete"
-												hx-target="#courses-list-container"
-												hx-swap="innerHTML"
+												hx-target={ "#course-article-" + c.IDCourse.String() }
+												hx-swap="outerHTML"
 												style="display: inline; margin: 0;"
 											>
 												<input type="hidden" name="id" value={ s.IDSemester.String() }/>
+												<input type="hidden" name="course_id" value={ c.IDCourse.String() }/>
 												<button
 													type="submit"
 													class="outline secondary"
@@ -251,13 +284,13 @@ templ CoursesList(courses []db.Course, semesters []db.ListSemestersWithCourseByP
 						</table>
 					</div>
 				}
-			</article>
+			</div>
 		}
-	}
+	</article>
 }
 
 // CourseCreatedResponse devuelve la lista actualizada más el formulario OOB
 templ CourseCreatedResponse(courses []db.Course, semesters []db.ListSemestersWithCourseByProfessorRow) {
-	@CoursesList(courses, semesters)
+	@CoursesList(courses, semesters, "")
 	@NewSemesterForm(courses, true)
 }

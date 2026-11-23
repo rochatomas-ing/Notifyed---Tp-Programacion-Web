@@ -145,15 +145,48 @@ func setupRoutes(conn *sql.DB, queries *db.Queries) *http.ServeMux {
 			semesters = []db.ListSemestersWithCourseByProfessorRow{}
 		}
 
+		expandedCourseID := strings.TrimSpace(r.URL.Query().Get("expanded"))
+
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 		if r.Header.Get("HX-Request") == "true" {
-			if err := views.CoursesContent(courses, semesters, true).Render(ctx, w); err != nil {
+			if err := views.CoursesContent(courses, semesters, expandedCourseID, true).Render(ctx, w); err != nil {
 				http.Error(w, "Error al renderizar el contenido de materias", http.StatusInternalServerError)
 			}
 			return
 		}
-		if err := views.CoursesPage(courses, semesters, prof.Fullname).Render(ctx, w); err != nil {
+		if err := views.CoursesPage(courses, semesters, expandedCourseID, prof.Fullname).Render(ctx, w); err != nil {
 			http.Error(w, "Error al renderizar la vista de materias", http.StatusInternalServerError)
+		}
+	})
+
+	// Desplegar u ocultar cursadas de una materia específica (GET /courses/{id}/cursadas)
+	mux.HandleFunc("GET /courses/{id}/cursadas", func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
+		prof := ensureProfessor(ctx, conn, queries)
+
+		courseID, err := uuid.Parse(r.PathValue("id"))
+		if err != nil {
+			http.Error(w, "ID de materia inválido", http.StatusBadRequest)
+			return
+		}
+
+		course, err := queries.GetCourseById(ctx, courseID)
+		if err != nil {
+			http.NotFound(w, r)
+			return
+		}
+
+		semesters, err := queries.ListSemestersWithCourseByProfessor(ctx, prof.IDUser)
+		if err != nil {
+			semesters = []db.ListSemestersWithCourseByProfessorRow{}
+		}
+
+		courseSemesters := views.FilterSemestersByCourse(semesters, courseID)
+		open := r.URL.Query().Get("open") == "true"
+
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		if err := views.CourseCard(course, courseSemesters, open).Render(ctx, w); err != nil {
+			http.Error(w, "Error al renderizar las cursadas de la materia", http.StatusInternalServerError)
 		}
 	})
 
@@ -278,7 +311,7 @@ func setupRoutes(conn *sql.DB, queries *db.Queries) *http.ServeMux {
 			courses, _ := queries.ListCourses(ctx)
 			semesters, _ := queries.ListSemestersWithCourseByProfessor(ctx, prof.IDUser)
 			w.Header().Set("Content-Type", "text/html; charset=utf-8")
-			views.CoursesList(courses, semesters).Render(ctx, w)
+			views.CoursesList(courses, semesters, "").Render(ctx, w)
 			return
 		}
 
@@ -308,10 +341,17 @@ func setupRoutes(conn *sql.DB, queries *db.Queries) *http.ServeMux {
 		}
 
 		if r.Header.Get("HX-Request") == "true" {
-			courses, _ := queries.ListCourses(ctx)
 			semesters, _ := queries.ListSemestersWithCourseByProfessor(ctx, prof.IDUser)
 			w.Header().Set("Content-Type", "text/html; charset=utf-8")
-			views.CoursesList(courses, semesters).Render(ctx, w)
+			if courseID, parseErr := uuid.Parse(r.FormValue("course_id")); parseErr == nil {
+				if course, getErr := queries.GetCourseById(ctx, courseID); getErr == nil {
+					courseSemesters := views.FilterSemestersByCourse(semesters, courseID)
+					views.CourseCard(course, courseSemesters, true).Render(ctx, w)
+					return
+				}
+			}
+			courses, _ := queries.ListCourses(ctx)
+			views.CoursesList(courses, semesters, "").Render(ctx, w)
 			return
 		}
 
@@ -526,12 +566,42 @@ func setupRoutes(conn *sql.DB, queries *db.Queries) *http.ServeMux {
 			semesters = []db.ListSemestersWithCourseByProfessorRow{}
 		}
 
+		courses := views.ExtractCoursesFromSemesters(semesters)
+		noticeSent := r.URL.Query().Get("enviado") == "1"
+
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 		if r.Header.Get("HX-Request") == "true" {
-			views.PublishNoticeContent(semesters, true).Render(ctx, w)
+			views.PublishNoticeContent(courses, noticeSent, true).Render(ctx, w)
 			return
 		}
-		views.PublishNoticePage(semesters, prof.Fullname).Render(ctx, w)
+		views.PublishNoticePage(courses, noticeSent, prof.Fullname).Render(ctx, w)
+	})
+
+	// Cargar cursadas dependientes de la materia seleccionada en Publicar Aviso (GET /publicar-aviso/cursadas)
+	mux.HandleFunc("GET /publicar-aviso/cursadas", func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
+		prof := ensureProfessor(ctx, conn, queries)
+
+		courseIDStr := strings.TrimSpace(r.URL.Query().Get("course_id"))
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		if courseIDStr == "" {
+			views.PublishNoticeSemesterSelect(nil, false).Render(ctx, w)
+			return
+		}
+
+		courseID, err := uuid.Parse(courseIDStr)
+		if err != nil {
+			views.PublishNoticeSemesterSelect(nil, false).Render(ctx, w)
+			return
+		}
+
+		semesters, err := queries.ListSemestersWithCourseByProfessor(ctx, prof.IDUser)
+		if err != nil {
+			semesters = []db.ListSemestersWithCourseByProfessorRow{}
+		}
+
+		courseSemesters := views.FilterSemestersByCourse(semesters, courseID)
+		views.PublishNoticeSemesterSelect(courseSemesters, true).Render(ctx, w)
 	})
 
 	// Publicar aviso (POST /avisos)
@@ -570,15 +640,20 @@ func setupRoutes(conn *sql.DB, queries *db.Queries) *http.ServeMux {
 			return
 		}
 
-		// Con HTMX, HX-Location realiza una transición SPA hacia /avisos sin recargar la página
+		// Con HTMX, mantiene al usuario en Publicar Aviso, muestra 'Aviso enviado' y reinicia el formulario
 		if r.Header.Get("HX-Request") == "true" {
-			w.Header().Set("HX-Location", "/avisos")
-			w.WriteHeader(http.StatusOK)
+			semesters, err := queries.ListSemestersWithCourseByProfessor(ctx, prof.IDUser)
+			if err != nil {
+				semesters = []db.ListSemestersWithCourseByProfessorRow{}
+			}
+			courses := views.ExtractCoursesFromSemesters(semesters)
+			w.Header().Set("Content-Type", "text/html; charset=utf-8")
+			views.PublishNoticeForm(courses, true).Render(ctx, w)
 			return
 		}
 
-		// Redirige al historial de avisos (PRG)
-		http.Redirect(w, r, "/avisos", http.StatusSeeOther)
+		// Sin HTMX (PRG), vuelve a Publicar Aviso mostrando confirmación y formulario limpio
+		http.Redirect(w, r, "/publicar-aviso?enviado=1", http.StatusSeeOther)
 	})
 
 	// -------------------------------------------------------------------------

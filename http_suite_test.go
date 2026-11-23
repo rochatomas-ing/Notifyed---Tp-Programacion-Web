@@ -238,15 +238,41 @@ func TestHTTPSuite_2_CourseAndSemesterLifecyclePRG(t *testing.T) {
 	assertRedirect(t, postSemResp, "/", "Creación de cursada con PRG")
 	postSemResp.Body.Close()
 
-	// Seguir redirección y verificar presencia de la cursada
+	// Seguir redirección y verificar que la materia aparezca sin ID visible y con cursadas colapsadas por defecto
 	getSemResp, err := regularClient.Get(server.URL + "/")
 	if err != nil {
 		t.Fatalf("Error en GET / tras habilitar cursada: %v", err)
 	}
 	bodySem := readResponseBody(t, getSemResp)
-	assertContains(t, bodySem, "2026", "Año de la cursada en la tabla")
-	assertContains(t, bodySem, "Abierta / Vigente", "Estado de la cursada en el DOM")
-	assertContains(t, bodySem, "Ver QR / Token", "Presencia del botón de QR y Token")
+	assertNotContains(t, bodySem, "ID: <code>"+createdCourse.IDCourse.String(), "El ID de la materia no debe mostrarse")
+	assertContains(t, bodySem, "Ver cursadas (1)", "Botón para desplegar cursadas de la materia")
+	assertNotContains(t, bodySem, "Abierta / Vigente", "Por defecto las cursadas deben estar colapsadas")
+
+	// Desplegar cursadas de la materia mediante el endpoint HTMX
+	expandReq, _ := http.NewRequest("GET", server.URL+"/courses/"+createdCourse.IDCourse.String()+"/cursadas?open=true", nil)
+	expandReq.Header.Set("HX-Request", "true")
+	expandResp, err := regularClient.Do(expandReq)
+	if err != nil {
+		t.Fatalf("Error al desplegar cursadas de la materia: %v", err)
+	}
+	assertStatus(t, expandResp, http.StatusOK, "GET /courses/{id}/cursadas?open=true")
+	bodyExpanded := readResponseBody(t, expandResp)
+	assertContains(t, bodyExpanded, "Ocultar cursadas (1)", "Botón para ocultar cursadas desplegadas")
+	assertContains(t, bodyExpanded, "2026", "Año de la cursada en la tabla desplegada")
+	assertContains(t, bodyExpanded, "Abierta / Vigente", "Estado de la cursada en el DOM desplegado")
+	assertContains(t, bodyExpanded, "Ver QR / Token", "Presencia del botón de QR y Token al desplegar")
+
+	// Colapsar nuevamente
+	collapseReq, _ := http.NewRequest("GET", server.URL+"/courses/"+createdCourse.IDCourse.String()+"/cursadas?open=false", nil)
+	collapseReq.Header.Set("HX-Request", "true")
+	collapseResp, err := regularClient.Do(collapseReq)
+	if err != nil {
+		t.Fatalf("Error al colapsar cursadas de la materia: %v", err)
+	}
+	assertStatus(t, collapseResp, http.StatusOK, "GET /courses/{id}/cursadas?open=false")
+	bodyCollapsed := readResponseBody(t, collapseResp)
+	assertContains(t, bodyCollapsed, "Ver cursadas (1)", "Botón restaurado tras colapsar")
+	assertNotContains(t, bodyCollapsed, "Ver QR / Token", "Tabla oculta tras colapsar")
 }
 
 // -----------------------------------------------------------------------------
@@ -434,10 +460,19 @@ func TestHTTPSuite_5_NoticePublishingAndHistoryPRG(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Error en POST /avisos: %v", err)
 	}
-	assertRedirect(t, postResp, "/avisos", "Publicación de aviso con PRG")
+	assertRedirect(t, postResp, "/publicar-aviso?enviado=1", "Publicación de aviso permanece en publicar-aviso (PRG)")
 	postResp.Body.Close()
 
-	// 2. Seguir redirección (GET /avisos) y verificar en el DOM
+	// 1b. Verificar pantalla de confirmación en /publicar-aviso?enviado=1
+	sentResp, err := regularClient.Get(server.URL + "/publicar-aviso?enviado=1")
+	if err != nil {
+		t.Fatalf("Error en GET /publicar-aviso?enviado=1: %v", err)
+	}
+	assertStatus(t, sentResp, http.StatusOK, "GET /publicar-aviso?enviado=1")
+	sentBody := readResponseBody(t, sentResp)
+	assertContains(t, sentBody, "Aviso enviado", "Mensaje de confirmación en pantalla")
+
+	// 2. Consultar historial (GET /avisos) y verificar el aviso publicado en el DOM
 	historyResp, err := regularClient.Get(server.URL + "/avisos")
 	if err != nil {
 		t.Fatalf("Error en GET /avisos: %v", err)
@@ -698,5 +733,109 @@ func TestHTTPSuite_9_HTMX_StudentLiveSearch_And_RowToggle(t *testing.T) {
 	assertContains(t, toggleBody, "Baja manual", "Badge de baja manual actualizado in-situ")
 	assertContains(t, toggleBody, "Reactivar", "Botón reactivar actualizado in-situ")
 	assertNotContains(t, toggleBody, "<table", "No debe devolver la tabla entera, solo la fila")
+}
+
+// -----------------------------------------------------------------------------
+// 10. Recorrido HTMX: Desplegable dependiente Materia -> Cursada y envío in-situ de Aviso
+// -----------------------------------------------------------------------------
+func TestHTTPSuite_10_HTMX_PublishNotice_DependentSelect_And_InPlaceSubmit(t *testing.T) {
+	conn, queries := getTestDB(t)
+	defer conn.Close()
+
+	ctx := context.Background()
+	prof := ensureProfessor(ctx, conn, queries)
+
+	courseA, _ := queries.CreateCourse(ctx, "Física "+uuid.NewString()[:8])
+	courseB, _ := queries.CreateCourse(ctx, "Química "+uuid.NewString()[:8])
+
+	semA1, _ := queries.CreateSemester(ctx, db.CreateSemesterParams{
+		IDCourse:    courseA.IDCourse,
+		ProfessorID: prof.IDUser,
+		Year:        2026,
+		SubToken:    generateSubToken(),
+		EndDate:     time.Date(2026, 7, 15, 0, 0, 0, 0, time.UTC),
+	})
+	semA2, _ := queries.CreateSemester(ctx, db.CreateSemesterParams{
+		IDCourse:    courseA.IDCourse,
+		ProfessorID: prof.IDUser,
+		Year:        2027,
+		SubToken:    generateSubToken(),
+		EndDate:     time.Date(2027, 12, 15, 0, 0, 0, 0, time.UTC),
+	})
+	semB1, _ := queries.CreateSemester(ctx, db.CreateSemesterParams{
+		IDCourse:    courseB.IDCourse,
+		ProfessorID: prof.IDUser,
+		Year:        2028,
+		SubToken:    generateSubToken(),
+		EndDate:     time.Date(2028, 12, 15, 0, 0, 0, 0, time.UTC),
+	})
+
+	handler := setupRoutes(conn, queries)
+	server := httptest.NewServer(handler)
+	defer server.Close()
+
+	client := server.Client()
+
+	// 1. GET /publicar-aviso muestra cada materia una sola vez y no pre-carga el select de cursadas
+	pageResp, err := client.Get(server.URL + "/publicar-aviso")
+	if err != nil {
+		t.Fatalf("Error en GET /publicar-aviso: %v", err)
+	}
+	assertStatus(t, pageResp, http.StatusOK, "GET /publicar-aviso")
+	pageBody := readResponseBody(t, pageResp)
+	assertContains(t, pageBody, `id="notice-course"`, "Selector de materia presente")
+	assertContains(t, pageBody, courseA.Name, "Materia A listada")
+	assertContains(t, pageBody, courseB.Name, "Materia B listada")
+	if strings.Count(pageBody, courseA.Name) != 1 {
+		t.Fatalf("La materia %q apareció %d veces en /publicar-aviso; debe figurar solo una vez", courseA.Name, strings.Count(pageBody, courseA.Name))
+	}
+	assertNotContains(t, pageBody, `id="notice-semester"`, "El selector de cursadas no debe mostrarse antes de elegir materia")
+
+	// 2. GET /publicar-aviso/cursadas?course_id=... devuelve solo las cursadas de la materia elegida
+	semReq, _ := http.NewRequest("GET", server.URL+"/publicar-aviso/cursadas?course_id="+courseA.IDCourse.String(), nil)
+	semReq.Header.Set("HX-Request", "true")
+	semResp, err := client.Do(semReq)
+	if err != nil {
+		t.Fatalf("Error en GET /publicar-aviso/cursadas: %v", err)
+	}
+	assertStatus(t, semResp, http.StatusOK, "GET /publicar-aviso/cursadas")
+	semBody := readResponseBody(t, semResp)
+	assertContains(t, semBody, `id="notice-semester"`, "Selector de cursadas renderizado")
+	assertContains(t, semBody, semA1.IDSemester.String(), "Cursada 1 de Materia A presente")
+	assertContains(t, semBody, semA2.IDSemester.String(), "Cursada 2 de Materia A presente")
+	assertNotContains(t, semBody, semB1.IDSemester.String(), "Cursada de Materia B no debe aparecer para Materia A")
+
+	// 3. POST /avisos vía HTMX publica el aviso, permanece en la página, muestra 'Aviso enviado' y vacía el formulario
+	noticeTitle := "Aviso HTMX " + uuid.NewString()[:6]
+	noticeMessage := "Contenido publicado sin salir de /publicar-aviso."
+	form := url.Values{
+		"course_id":   {courseA.IDCourse.String()},
+		"id_semester": {semA1.IDSemester.String()},
+		"title":       {noticeTitle},
+		"message":     {noticeMessage},
+	}
+	postReq, _ := http.NewRequest("POST", server.URL+"/avisos", strings.NewReader(form.Encode()))
+	postReq.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	postReq.Header.Set("HX-Request", "true")
+
+	postResp, err := client.Do(postReq)
+	if err != nil {
+		t.Fatalf("Error en POST /avisos vía HTMX: %v", err)
+	}
+	assertStatus(t, postResp, http.StatusOK, "POST /avisos vía HTMX devuelve 200")
+	if loc := postResp.Header.Get("HX-Location"); loc != "" {
+		t.Fatalf("No debe enviar HX-Location al publicar aviso, pero se obtuvo: %q", loc)
+	}
+	postBody := readResponseBody(t, postResp)
+	assertContains(t, postBody, "Aviso enviado", "Mensaje de confirmación 'Aviso enviado'")
+	assertContains(t, postBody, "-- Selecciona una materia --", "Formulario reiniciado con selector de materia por defecto")
+	assertNotContains(t, postBody, noticeTitle, "El formulario debe quedar vacío tras publicar")
+	assertNotContains(t, postBody, noticeMessage, "El mensaje del formulario debe quedar vacío tras publicar")
+	assertNotContains(t, postBody, `id="notice-semester"`, "El selector dependiente de cursadas debe quedar vacío tras reiniciar")
+
+	// 4. Confirmar que el aviso se persistió correctamente en el historial
+	histResp, _ := client.Get(server.URL + "/avisos")
+	histBody := readResponseBody(t, histResp)
+	assertContains(t, histBody, noticeTitle, "Aviso publicado persistido en el historial")
 }
 

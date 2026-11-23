@@ -15,7 +15,7 @@ import (
 )
 
 // PublishNoticePage renderiza la página completa de Publicar Aviso (carga tradicional)
-func PublishNoticePage(semesters []db.ListSemestersWithCourseByProfessorRow, professorName string) templ.Component {
+func PublishNoticePage(courses []db.Course, noticeSent bool, professorName string) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
@@ -44,7 +44,7 @@ func PublishNoticePage(semesters []db.ListSemestersWithCourseByProfessorRow, pro
 				}()
 			}
 			ctx = templ.InitializeContext(ctx)
-			templ_7745c5c3_Err = PublishNoticeContent(semesters, false).Render(ctx, templ_7745c5c3_Buffer)
+			templ_7745c5c3_Err = PublishNoticeContent(courses, noticeSent, false).Render(ctx, templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -59,7 +59,7 @@ func PublishNoticePage(semesters []db.ListSemestersWithCourseByProfessorRow, pro
 }
 
 // PublishNoticeContent renderiza el contenido de Publicar Aviso (reutilizable en HTMX)
-func PublishNoticeContent(semesters []db.ListSemestersWithCourseByProfessorRow, isHTMX bool) templ.Component {
+func PublishNoticeContent(courses []db.Course, noticeSent bool, isHTMX bool) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
@@ -86,62 +86,181 @@ func PublishNoticeContent(semesters []db.ListSemestersWithCourseByProfessorRow, 
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		if len(semesters) == 0 {
+		if len(courses) == 0 {
 			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "<article style=\"text-align: center; padding: 2.5rem 1rem;\"><h4>No tienes cursadas disponibles</h4><p><em>Para poder emitir un aviso, primero debes tener al menos una cursada creada en el apartado de <a href=\"/\" hx-get=\"/\" hx-target=\"#main-content\" hx-push-url=\"true\">Materias</a>.</em></p><a href=\"/\" hx-get=\"/\" hx-target=\"#main-content\" hx-push-url=\"true\" role=\"button\" class=\"primary\">Ir a Materias y Cursadas</a></article>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 		} else {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "<article style=\"padding: 2rem;\"><form method=\"POST\" action=\"/avisos\" hx-post=\"/avisos\" hx-target=\"#main-content\" hx-push-url=\"true\"><label for=\"notice-semester\">Materia y Cursada Destino <select id=\"notice-semester\" name=\"id_semester\" required>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "<div id=\"publish-notice-container\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			for _, s := range semesters {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, "<option value=\"")
+			templ_7745c5c3_Err = PublishNoticeForm(courses, noticeSent).Render(ctx, templ_7745c5c3_Buffer)
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, "</div>")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+		}
+		return nil
+	})
+}
+
+// PublishNoticeForm renderiza el formulario de publicación de avisos con confirmación in-situ
+func PublishNoticeForm(courses []db.Course, noticeSent bool) templ.Component {
+	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
+		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
+		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
+			return templ_7745c5c3_CtxErr
+		}
+		templ_7745c5c3_Buffer, templ_7745c5c3_IsBuffer := templruntime.GetBuffer(templ_7745c5c3_W)
+		if !templ_7745c5c3_IsBuffer {
+			defer func() {
+				templ_7745c5c3_BufErr := templruntime.ReleaseBuffer(templ_7745c5c3_Buffer)
+				if templ_7745c5c3_Err == nil {
+					templ_7745c5c3_Err = templ_7745c5c3_BufErr
+				}
+			}()
+		}
+		ctx = templ.InitializeContext(ctx)
+		ctx = templ.ClearChildren(ctx)
+		if noticeSent {
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "<div id=\"notice-sent-banner\" role=\"status\" style=\"background-color: #dcfce7; color: #166534; border: 1px solid #86efac; border-radius: 0.65rem; padding: 0.9rem 1.2rem; margin-bottom: 1.25rem; font-weight: 600;\">Aviso enviado</div>")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 6, "<article style=\"padding: 2rem;\"><form method=\"POST\" action=\"/avisos\" hx-post=\"/avisos\" hx-target=\"#publish-notice-container\" hx-swap=\"innerHTML\"><label for=\"notice-course\">Materia <select id=\"notice-course\" name=\"course_id\" hx-get=\"/publicar-aviso/cursadas\" hx-trigger=\"change\" hx-target=\"#notice-semester-container\" hx-swap=\"innerHTML\" required><option value=\"\">-- Selecciona una materia --</option> ")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		for _, c := range courses {
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 7, "<option value=\"")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			var templ_7745c5c3_Var5 string
+			templ_7745c5c3_Var5, templ_7745c5c3_Err = templruntime.NewAttributeExpression(c.IDCourse.String()).Resolve(ctx)
+			if templ_7745c5c3_Err != nil {
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/publish_notice_page.templ`, Line: 79, Col: 41}
+			}
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var5)
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 8, "\">")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			var templ_7745c5c3_Var6 string
+			templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.JoinStringErrs(c.Name)
+			if templ_7745c5c3_Err != nil {
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/publish_notice_page.templ`, Line: 79, Col: 52}
+			}
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var6))
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 9, "</option>")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 10, "</select></label><!-- Desplegable dependiente de cursadas: aparece dinámicamente al elegir una materia --><div id=\"notice-semester-container\"></div><label for=\"notice-title\" style=\"margin-top: 1rem;\">Título del aviso <input type=\"text\" id=\"notice-title\" name=\"title\" placeholder=\"Ej: Cambio de aula para el examen parcial\" maxlength=\"255\" required autocomplete=\"off\"></label> <label for=\"notice-message\" style=\"margin-top: 1rem;\">Mensaje <textarea id=\"notice-message\" name=\"message\" rows=\"6\" placeholder=\"Escribe aquí el contenido detallado del aviso...\" required></textarea> <small>El mensaje será visible en el historial y enviado por correo a los suscriptores.</small></label><footer style=\"margin-top: 1.5rem; display: flex; justify-content: flex-end; gap: 0.75rem;\"><a href=\"/avisos\" hx-get=\"/avisos\" hx-target=\"#main-content\" hx-push-url=\"true\" role=\"button\" class=\"outline secondary\" style=\"margin-bottom: 0;\">Cancelar</a> <button type=\"submit\" class=\"primary\" style=\"margin-bottom: 0; width: auto;\">Publicar Aviso</button></footer></form></article>")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		return nil
+	})
+}
+
+// PublishNoticeSemesterSelect renderiza el menú desplegable de cursadas correspondiente a la materia seleccionada
+func PublishNoticeSemesterSelect(semesters []db.ListSemestersWithCourseByProfessorRow, courseSelected bool) templ.Component {
+	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
+		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
+		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
+			return templ_7745c5c3_CtxErr
+		}
+		templ_7745c5c3_Buffer, templ_7745c5c3_IsBuffer := templruntime.GetBuffer(templ_7745c5c3_W)
+		if !templ_7745c5c3_IsBuffer {
+			defer func() {
+				templ_7745c5c3_BufErr := templruntime.ReleaseBuffer(templ_7745c5c3_Buffer)
+				if templ_7745c5c3_Err == nil {
+					templ_7745c5c3_Err = templ_7745c5c3_BufErr
+				}
+			}()
+		}
+		ctx = templ.InitializeContext(ctx)
+		ctx = templ.ClearChildren(ctx)
+		if courseSelected {
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 11, "<label for=\"notice-semester\" style=\"margin-top: 1rem;\">Cursada Destino ")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			if len(semesters) == 0 {
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 12, "<select id=\"notice-semester\" name=\"id_semester\" disabled required><option value=\"\">Esta materia no tiene cursadas disponibles</option></select>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				var templ_7745c5c3_Var4 string
-				templ_7745c5c3_Var4, templ_7745c5c3_Err = templruntime.NewAttributeExpression(s.IDSemester.String()).Resolve(ctx)
-				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/publish_notice_page.templ`, Line: 53, Col: 44}
-				}
-				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var4)
+			} else {
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 13, "<select id=\"notice-semester\" name=\"id_semester\" required>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "\">")
-				if templ_7745c5c3_Err != nil {
-					return templ_7745c5c3_Err
+				for _, s := range semesters {
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 14, "<option value=\"")
+					if templ_7745c5c3_Err != nil {
+						return templ_7745c5c3_Err
+					}
+					var templ_7745c5c3_Var8 string
+					templ_7745c5c3_Var8, templ_7745c5c3_Err = templruntime.NewAttributeExpression(s.IDSemester.String()).Resolve(ctx)
+					if templ_7745c5c3_Err != nil {
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/publish_notice_page.templ`, Line: 144, Col: 43}
+					}
+					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var8)
+					if templ_7745c5c3_Err != nil {
+						return templ_7745c5c3_Err
+					}
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 15, "\">Cursada ")
+					if templ_7745c5c3_Err != nil {
+						return templ_7745c5c3_Err
+					}
+					var templ_7745c5c3_Var9 string
+					templ_7745c5c3_Var9, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("%d", s.Year))
+					if templ_7745c5c3_Err != nil {
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/publish_notice_page.templ`, Line: 145, Col: 42}
+					}
+					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var9))
+					if templ_7745c5c3_Err != nil {
+						return templ_7745c5c3_Err
+					}
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 16, " — fin ")
+					if templ_7745c5c3_Err != nil {
+						return templ_7745c5c3_Err
+					}
+					var templ_7745c5c3_Var10 string
+					templ_7745c5c3_Var10, templ_7745c5c3_Err = templ.JoinStringErrs(s.EndDate.Format("02/01/2006"))
+					if templ_7745c5c3_Err != nil {
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/publish_notice_page.templ`, Line: 145, Col: 85}
+					}
+					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var10))
+					if templ_7745c5c3_Err != nil {
+						return templ_7745c5c3_Err
+					}
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 17, "</option>")
+					if templ_7745c5c3_Err != nil {
+						return templ_7745c5c3_Err
+					}
 				}
-				var templ_7745c5c3_Var5 string
-				templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinStringErrs(s.CourseName)
-				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/publish_notice_page.templ`, Line: 54, Col: 22}
-				}
-				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var5))
-				if templ_7745c5c3_Err != nil {
-					return templ_7745c5c3_Err
-				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 6, " — Cursada ")
-				if templ_7745c5c3_Err != nil {
-					return templ_7745c5c3_Err
-				}
-				var templ_7745c5c3_Var6 string
-				templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("%d", s.Year))
-				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/publish_notice_page.templ`, Line: 54, Col: 64}
-				}
-				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var6))
-				if templ_7745c5c3_Err != nil {
-					return templ_7745c5c3_Err
-				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 7, "</option>")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 18, "</select> <small>Los alumnos inscriptos y activos de esta cursada recibirán la notificación.</small>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 8, "</select> <small>Los alumnos inscriptos y activos de esta cursada recibirán la notificación.</small></label> <label for=\"notice-title\" style=\"margin-top: 1rem;\">Título del aviso <input type=\"text\" id=\"notice-title\" name=\"title\" placeholder=\"Ej: Cambio de aula para el examen parcial\" maxlength=\"255\" required autocomplete=\"off\"></label> <label for=\"notice-message\" style=\"margin-top: 1rem;\">Mensaje <textarea id=\"notice-message\" name=\"message\" rows=\"6\" placeholder=\"Escribe aquí el contenido detallado del aviso...\" required></textarea> <small>El mensaje será visible en el historial y enviado por correo a los suscriptores.</small></label><footer style=\"margin-top: 1.5rem; display: flex; justify-content: flex-end; gap: 0.75rem;\"><a href=\"/avisos\" hx-get=\"/avisos\" hx-target=\"#main-content\" hx-push-url=\"true\" role=\"button\" class=\"outline secondary\" style=\"margin-bottom: 0;\">Cancelar</a> <button type=\"submit\" class=\"primary\" style=\"margin-bottom: 0; width: auto;\">Publicar Aviso</button></footer></form></article>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 19, "</label>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

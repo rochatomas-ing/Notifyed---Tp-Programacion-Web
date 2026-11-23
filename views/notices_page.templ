@@ -48,62 +48,69 @@ templ NoticesContent(
 		</a>
 	</div>
 
-	<!-- Filtros de búsqueda dinámicos con HTMX -->
-	<article style="padding: 1.25rem; margin-bottom: 2rem;">
-		<header style="margin-bottom: 0.75rem;">
-			<h5 style="margin-bottom: 0;">Filtrar avisos</h5>
-		</header>
-		<form method="GET" action="/avisos" id="notices-filter-form" style="margin-bottom: 0;">
-			<div class="grid">
-				<div>
-					<label for="filter-course">Por Materia:</label>
-					<select
-						id="filter-course"
-						name="course_id"
-						hx-get="/avisos"
-						hx-trigger="change"
-						hx-target="#notices-list-container"
-						hx-swap="innerHTML"
-						hx-include="#notices-filter-form"
-						hx-push-url="true"
-					>
-						<option value="">-- Todas las materias --</option>
-						for _, c := range courses {
-							<option
-								value={ c.IDCourse.String() }
-								selected?={ c.IDCourse.String() == selectedCourseId }
-							>
-								{ c.Name }
-							</option>
-						}
-					</select>
-				</div>
+	<!-- Barra discreta de filtros dinámicos con HTMX -->
+	<div style="background: #f1f5f9; border: 1px solid #e2e8f0; border-radius: 0.5rem; padding: 0.6rem 0.9rem; margin-bottom: 1.25rem;">
+		<form
+			method="GET"
+			action="/avisos"
+			id="notices-filter-form"
+			style="display: flex; align-items: center; flex-wrap: wrap; gap: 0.75rem; margin-bottom: 0;"
+		>
+			<span style="font-size: 0.8rem; font-weight: 600; color: #64748b; text-transform: uppercase; letter-spacing: 0.03em; white-space: nowrap;">
+				Filtrar avisos
+			</span>
 
-				<div>
-					<label for="filter-semester">Por Cursada:</label>
-					<select
-						id="filter-semester"
-						name="semester_id"
-						hx-get="/avisos"
-						hx-trigger="change"
-						hx-target="#notices-list-container"
-						hx-swap="innerHTML"
-						hx-include="#notices-filter-form"
-						hx-push-url="true"
-					>
-						<option value="">-- Todas las cursadas --</option>
-						for _, s := range semesters {
-							<option
-								value={ s.IDSemester.String() }
-								selected?={ s.IDSemester.String() == selectedSemesterId }
-							>
-								{ s.CourseName } ({ fmt.Sprintf("%d", s.Year) })
-							</option>
-						}
-					</select>
-				</div>
+			<div style="display: flex; align-items: center; gap: 0.4rem; flex: 1 1 200px; min-width: 180px;">
+				<label for="filter-course" style="margin: 0; font-size: 0.82rem; color: #475569; white-space: nowrap;">Por Materia:</label>
+				<select
+					id="filter-course"
+					name="course_id"
+					hx-get="/avisos"
+					hx-trigger="change"
+					hx-target="#notices-list-container"
+					hx-swap="innerHTML"
+					hx-include="#notices-filter-form"
+					hx-push-url="true"
+					style="margin: 0; padding: 0.3rem 2rem 0.3rem 0.6rem; font-size: 0.84rem; height: auto;"
+				>
+					<option value="">Todas</option>
+					for _, c := range courses {
+						<option
+							value={ c.IDCourse.String() }
+							selected?={ c.IDCourse.String() == selectedCourseId }
+						>
+							{ c.Name }
+						</option>
+					}
+				</select>
 			</div>
-			<div style="display: flex; gap: 0.5rem; justify-content: flex-end; margin-top: 0.5rem;">
+
+			<div style="display: flex; align-items: center; gap: 0.4rem; flex: 1 1 200px; min-width: 180px;">
+				<label for="filter-semester" style="margin: 0; font-size: 0.82rem; color: #475569; white-space: nowrap;">Por Cursada:</label>
+				<select
+					id="filter-semester"
+					name="semester_id"
+					hx-get="/avisos"
+					hx-trigger="change"
+					hx-target="#notices-list-container"
+					hx-swap="innerHTML"
+					hx-include="#notices-filter-form"
+					hx-push-url="true"
+					style="margin: 0; padding: 0.3rem 2rem 0.3rem 0.6rem; font-size: 0.84rem; height: auto;"
+				>
+					<option value="">Todas</option>
+					for _, s := range semesters {
+						<option
+							value={ s.IDSemester.String() }
+							selected?={ s.IDSemester.String() == selectedSemesterId }
+						>
+							{ s.CourseName } ({ fmt.Sprintf("%d", s.Year) })
+						</option>
+					}
+				</select>
+			</div>
+
+			<div style="display: flex; align-items: center; gap: 0.4rem;">
 				if selectedCourseId != "" || selectedSemesterId != "" {
 					<a
 						href="/avisos"
@@ -112,17 +119,21 @@ templ NoticesContent(
 						hx-push-url="true"
 						role="button"
 						class="outline secondary"
-						style="margin-bottom: 0;"
+						style="margin: 0; padding: 0.3rem 0.65rem; font-size: 0.8rem;"
 					>
-						Limpiar filtros
+						Limpiar
 					</a>
 				}
-				<button type="submit" class="secondary" style="margin-bottom: 0; width: auto;">
+				<button
+					type="submit"
+					class="outline secondary"
+					style="margin: 0; padding: 0.3rem 0.65rem; font-size: 0.8rem; width: auto;"
+				>
 					Filtrar
 				</button>
 			</div>
 		</form>
-	</article>
+	</div>
 
 	<!-- Contenedor dinámico del Listado de Avisos -->
 	<div id="notices-list-container">

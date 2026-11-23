@@ -6,14 +6,14 @@ import (
 )
 
 // PublishNoticePage renderiza la página completa de Publicar Aviso (carga tradicional)
-templ PublishNoticePage(semesters []db.ListSemestersWithCourseByProfessorRow, professorName string) {
+templ PublishNoticePage(courses []db.Course, noticeSent bool, professorName string) {
 	@Layout("NotifyEd - Publicar Aviso", "publicar", professorName) {
-		@PublishNoticeContent(semesters, false)
+		@PublishNoticeContent(courses, noticeSent, false)
 	}
 }
 
 // PublishNoticeContent renderiza el contenido de Publicar Aviso (reutilizable en HTMX)
-templ PublishNoticeContent(semesters []db.ListSemestersWithCourseByProfessorRow, isHTMX bool) {
+templ PublishNoticeContent(courses []db.Course, noticeSent bool, isHTMX bool) {
 	if isHTMX {
 		@TopNavBar("publicar", true)
 	}
@@ -22,7 +22,7 @@ templ PublishNoticeContent(semesters []db.ListSemestersWithCourseByProfessorRow,
 		<p>Selecciona la materia y cursada correspondiente, completa el título y mensaje del aviso.</p>
 	</hgroup>
 
-	if len(semesters) == 0 {
+	if len(courses) == 0 {
 		<article style="text-align: center; padding: 2.5rem 1rem;">
 			<h4>No tienes cursadas disponibles</h4>
 			<p><em>Para poder emitir un aviso, primero debes tener al menos una cursada creada en el apartado de <a href="/" hx-get="/" hx-target="#main-content" hx-push-url="true">Materias</a>.</em></p>
@@ -38,68 +38,116 @@ templ PublishNoticeContent(semesters []db.ListSemestersWithCourseByProfessorRow,
 			</a>
 		</article>
 	} else {
-		<article style="padding: 2rem;">
-			<form
-				method="POST"
-				action="/avisos"
-				hx-post="/avisos"
-				hx-target="#main-content"
-				hx-push-url="true"
-			>
-				<label for="notice-semester">
-					Materia y Cursada Destino
-					<select id="notice-semester" name="id_semester" required>
-						for _, s := range semesters {
-							<option value={ s.IDSemester.String() }>
-								{ s.CourseName } — Cursada { fmt.Sprintf("%d", s.Year) }
-							</option>
-						}
-					</select>
-					<small>Los alumnos inscriptos y activos de esta cursada recibirán la notificación.</small>
-				</label>
+		<div id="publish-notice-container">
+			@PublishNoticeForm(courses, noticeSent)
+		</div>
+	}
+}
 
-				<label for="notice-title" style="margin-top: 1rem;">
-					Título del aviso
-					<input
-						type="text"
-						id="notice-title"
-						name="title"
-						placeholder="Ej: Cambio de aula para el examen parcial"
-						maxlength="255"
-						required
-						autocomplete="off"
-					/>
-				</label>
+// PublishNoticeForm renderiza el formulario de publicación de avisos con confirmación in-situ
+templ PublishNoticeForm(courses []db.Course, noticeSent bool) {
+	if noticeSent {
+		<div
+			id="notice-sent-banner"
+			role="status"
+			style="background-color: #dcfce7; color: #166534; border: 1px solid #86efac; border-radius: 0.65rem; padding: 0.9rem 1.2rem; margin-bottom: 1.25rem; font-weight: 600;"
+		>
+			Aviso enviado
+		</div>
+	}
+	<article style="padding: 2rem;">
+		<form
+			method="POST"
+			action="/avisos"
+			hx-post="/avisos"
+			hx-target="#publish-notice-container"
+			hx-swap="innerHTML"
+		>
+			<label for="notice-course">
+				Materia
+				<select
+					id="notice-course"
+					name="course_id"
+					hx-get="/publicar-aviso/cursadas"
+					hx-trigger="change"
+					hx-target="#notice-semester-container"
+					hx-swap="innerHTML"
+					required
+				>
+					<option value="">-- Selecciona una materia --</option>
+					for _, c := range courses {
+						<option value={ c.IDCourse.String() }>{ c.Name }</option>
+					}
+				</select>
+			</label>
 
-				<label for="notice-message" style="margin-top: 1rem;">
-					Mensaje
-					<textarea
-						id="notice-message"
-						name="message"
-						rows="6"
-						placeholder="Escribe aquí el contenido detallado del aviso..."
-						required
-					></textarea>
-					<small>El mensaje será visible en el historial y enviado por correo a los suscriptores.</small>
-				</label>
+			<!-- Desplegable dependiente de cursadas: aparece dinámicamente al elegir una materia -->
+			<div id="notice-semester-container"></div>
 
-				<footer style="margin-top: 1.5rem; display: flex; justify-content: flex-end; gap: 0.75rem;">
-					<a
-						href="/avisos"
-						hx-get="/avisos"
-						hx-target="#main-content"
-						hx-push-url="true"
-						role="button"
-						class="outline secondary"
-						style="margin-bottom: 0;"
-					>
-						Cancelar
-					</a>
-					<button type="submit" class="primary" style="margin-bottom: 0; width: auto;">
-						Publicar Aviso
-					</button>
-				</footer>
-			</form>
-		</article>
+			<label for="notice-title" style="margin-top: 1rem;">
+				Título del aviso
+				<input
+					type="text"
+					id="notice-title"
+					name="title"
+					placeholder="Ej: Cambio de aula para el examen parcial"
+					maxlength="255"
+					required
+					autocomplete="off"
+				/>
+			</label>
+
+			<label for="notice-message" style="margin-top: 1rem;">
+				Mensaje
+				<textarea
+					id="notice-message"
+					name="message"
+					rows="6"
+					placeholder="Escribe aquí el contenido detallado del aviso..."
+					required
+				></textarea>
+				<small>El mensaje será visible en el historial y enviado por correo a los suscriptores.</small>
+			</label>
+
+			<footer style="margin-top: 1.5rem; display: flex; justify-content: flex-end; gap: 0.75rem;">
+				<a
+					href="/avisos"
+					hx-get="/avisos"
+					hx-target="#main-content"
+					hx-push-url="true"
+					role="button"
+					class="outline secondary"
+					style="margin-bottom: 0;"
+				>
+					Cancelar
+				</a>
+				<button type="submit" class="primary" style="margin-bottom: 0; width: auto;">
+					Publicar Aviso
+				</button>
+			</footer>
+		</form>
+	</article>
+}
+
+// PublishNoticeSemesterSelect renderiza el menú desplegable de cursadas correspondiente a la materia seleccionada
+templ PublishNoticeSemesterSelect(semesters []db.ListSemestersWithCourseByProfessorRow, courseSelected bool) {
+	if courseSelected {
+		<label for="notice-semester" style="margin-top: 1rem;">
+			Cursada Destino
+			if len(semesters) == 0 {
+				<select id="notice-semester" name="id_semester" disabled required>
+					<option value="">Esta materia no tiene cursadas disponibles</option>
+				</select>
+			} else {
+				<select id="notice-semester" name="id_semester" required>
+					for _, s := range semesters {
+						<option value={ s.IDSemester.String() }>
+							Cursada { fmt.Sprintf("%d", s.Year) } — fin { s.EndDate.Format("02/01/2006") }
+						</option>
+					}
+				</select>
+				<small>Los alumnos inscriptos y activos de esta cursada recibirán la notificación.</small>
+			}
+		</label>
 	}
 }

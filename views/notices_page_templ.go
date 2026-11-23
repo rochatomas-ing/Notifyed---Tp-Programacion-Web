@@ -96,7 +96,7 @@ func NoticesContent(
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<div style=\"display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; margin-bottom: 1.5rem;\"><hgroup style=\"margin-bottom: 0;\"><h2>Historial de Avisos</h2><p>Consulta los avisos publicados para tus cursadas (ordenados por el más reciente).</p></hgroup> <a href=\"/publicar-aviso\" hx-get=\"/publicar-aviso\" hx-target=\"#main-content\" hx-push-url=\"true\" role=\"button\" class=\"primary\">Publicar nuevo aviso</a></div><!-- Filtros de búsqueda dinámicos con HTMX --><article style=\"padding: 1.25rem; margin-bottom: 2rem;\"><header style=\"margin-bottom: 0.75rem;\"><h5 style=\"margin-bottom: 0;\">Filtrar avisos</h5></header><form method=\"GET\" action=\"/avisos\" id=\"notices-filter-form\" style=\"margin-bottom: 0;\"><div class=\"grid\"><div><label for=\"filter-course\">Por Materia:</label> <select id=\"filter-course\" name=\"course_id\" hx-get=\"/avisos\" hx-trigger=\"change\" hx-target=\"#notices-list-container\" hx-swap=\"innerHTML\" hx-include=\"#notices-filter-form\" hx-push-url=\"true\"><option value=\"\">-- Todas las materias --</option> ")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<div style=\"display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; margin-bottom: 1.5rem;\"><hgroup style=\"margin-bottom: 0;\"><h2>Historial de Avisos</h2><p>Consulta los avisos publicados para tus cursadas (ordenados por el más reciente).</p></hgroup> <a href=\"/publicar-aviso\" hx-get=\"/publicar-aviso\" hx-target=\"#main-content\" hx-push-url=\"true\" role=\"button\" class=\"primary\">Publicar nuevo aviso</a></div><!-- Barra discreta de filtros dinámicos con HTMX --><div style=\"background: #f1f5f9; border: 1px solid #e2e8f0; border-radius: 0.5rem; padding: 0.6rem 0.9rem; margin-bottom: 1.25rem;\"><form method=\"GET\" action=\"/avisos\" id=\"notices-filter-form\" style=\"display: flex; align-items: center; flex-wrap: wrap; gap: 0.75rem; margin-bottom: 0;\"><span style=\"font-size: 0.8rem; font-weight: 600; color: #64748b; text-transform: uppercase; letter-spacing: 0.03em; white-space: nowrap;\">Filtrar avisos</span><div style=\"display: flex; align-items: center; gap: 0.4rem; flex: 1 1 200px; min-width: 180px;\"><label for=\"filter-course\" style=\"margin: 0; font-size: 0.82rem; color: #475569; white-space: nowrap;\">Por Materia:</label> <select id=\"filter-course\" name=\"course_id\" hx-get=\"/avisos\" hx-trigger=\"change\" hx-target=\"#notices-list-container\" hx-swap=\"innerHTML\" hx-include=\"#notices-filter-form\" hx-push-url=\"true\" style=\"margin: 0; padding: 0.3rem 2rem 0.3rem 0.6rem; font-size: 0.84rem; height: auto;\"><option value=\"\">Todas</option> ")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -108,7 +108,7 @@ func NoticesContent(
 			var templ_7745c5c3_Var4 string
 			templ_7745c5c3_Var4, templ_7745c5c3_Err = templruntime.NewAttributeExpression(c.IDCourse.String()).Resolve(ctx)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/notices_page.templ`, Line: 73, Col: 35}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/notices_page.templ`, Line: 79, Col: 34}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var4)
 			if templ_7745c5c3_Err != nil {
@@ -131,7 +131,7 @@ func NoticesContent(
 			var templ_7745c5c3_Var5 string
 			templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinStringErrs(c.Name)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/notices_page.templ`, Line: 76, Col: 16}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/notices_page.templ`, Line: 82, Col: 15}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var5))
 			if templ_7745c5c3_Err != nil {
@@ -142,7 +142,7 @@ func NoticesContent(
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 7, "</select></div><div><label for=\"filter-semester\">Por Cursada:</label> <select id=\"filter-semester\" name=\"semester_id\" hx-get=\"/avisos\" hx-trigger=\"change\" hx-target=\"#notices-list-container\" hx-swap=\"innerHTML\" hx-include=\"#notices-filter-form\" hx-push-url=\"true\"><option value=\"\">-- Todas las cursadas --</option> ")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 7, "</select></div><div style=\"display: flex; align-items: center; gap: 0.4rem; flex: 1 1 200px; min-width: 180px;\"><label for=\"filter-semester\" style=\"margin: 0; font-size: 0.82rem; color: #475569; white-space: nowrap;\">Por Cursada:</label> <select id=\"filter-semester\" name=\"semester_id\" hx-get=\"/avisos\" hx-trigger=\"change\" hx-target=\"#notices-list-container\" hx-swap=\"innerHTML\" hx-include=\"#notices-filter-form\" hx-push-url=\"true\" style=\"margin: 0; padding: 0.3rem 2rem 0.3rem 0.6rem; font-size: 0.84rem; height: auto;\"><option value=\"\">Todas</option> ")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -154,7 +154,7 @@ func NoticesContent(
 			var templ_7745c5c3_Var6 string
 			templ_7745c5c3_Var6, templ_7745c5c3_Err = templruntime.NewAttributeExpression(s.IDSemester.String()).Resolve(ctx)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/notices_page.templ`, Line: 97, Col: 37}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/notices_page.templ`, Line: 104, Col: 36}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var6)
 			if templ_7745c5c3_Err != nil {
@@ -177,7 +177,7 @@ func NoticesContent(
 			var templ_7745c5c3_Var7 string
 			templ_7745c5c3_Var7, templ_7745c5c3_Err = templ.JoinStringErrs(s.CourseName)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/notices_page.templ`, Line: 100, Col: 22}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/notices_page.templ`, Line: 107, Col: 21}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var7))
 			if templ_7745c5c3_Err != nil {
@@ -190,7 +190,7 @@ func NoticesContent(
 			var templ_7745c5c3_Var8 string
 			templ_7745c5c3_Var8, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("%d", s.Year))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/notices_page.templ`, Line: 100, Col: 53}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/notices_page.templ`, Line: 107, Col: 52}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var8))
 			if templ_7745c5c3_Err != nil {
@@ -201,17 +201,17 @@ func NoticesContent(
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 14, "</select></div></div><div style=\"display: flex; gap: 0.5rem; justify-content: flex-end; margin-top: 0.5rem;\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 14, "</select></div><div style=\"display: flex; align-items: center; gap: 0.4rem;\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		if selectedCourseId != "" || selectedSemesterId != "" {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 15, "<a href=\"/avisos\" hx-get=\"/avisos\" hx-target=\"#main-content\" hx-push-url=\"true\" role=\"button\" class=\"outline secondary\" style=\"margin-bottom: 0;\">Limpiar filtros</a> ")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 15, "<a href=\"/avisos\" hx-get=\"/avisos\" hx-target=\"#main-content\" hx-push-url=\"true\" role=\"button\" class=\"outline secondary\" style=\"margin: 0; padding: 0.3rem 0.65rem; font-size: 0.8rem;\">Limpiar</a> ")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 16, "<button type=\"submit\" class=\"secondary\" style=\"margin-bottom: 0; width: auto;\">Filtrar</button></div></form></article><!-- Contenedor dinámico del Listado de Avisos --><div id=\"notices-list-container\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 16, "<button type=\"submit\" class=\"outline secondary\" style=\"margin: 0; padding: 0.3rem 0.65rem; font-size: 0.8rem; width: auto;\">Filtrar</button></div></form></div><!-- Contenedor dinámico del Listado de Avisos --><div id=\"notices-list-container\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -263,7 +263,7 @@ func NoticesList(notices []db.ListNoticesFilteredRow) templ.Component {
 				var templ_7745c5c3_Var10 string
 				templ_7745c5c3_Var10, templ_7745c5c3_Err = templruntime.NewAttributeExpression("notice-card-" + n.IDNotice.String()).Resolve(ctx)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/notices_page.templ`, Line: 154, Col: 80}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/notices_page.templ`, Line: 165, Col: 80}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var10)
 				if templ_7745c5c3_Err != nil {
@@ -276,7 +276,7 @@ func NoticesList(notices []db.ListNoticesFilteredRow) templ.Component {
 				var templ_7745c5c3_Var11 string
 				templ_7745c5c3_Var11, templ_7745c5c3_Err = templ.JoinStringErrs(n.Title)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/notices_page.templ`, Line: 157, Col: 52}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/notices_page.templ`, Line: 168, Col: 52}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var11))
 				if templ_7745c5c3_Err != nil {
@@ -289,7 +289,7 @@ func NoticesList(notices []db.ListNoticesFilteredRow) templ.Component {
 				var templ_7745c5c3_Var12 string
 				templ_7745c5c3_Var12, templ_7745c5c3_Err = templ.JoinStringErrs(n.CourseName)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/notices_page.templ`, Line: 159, Col: 30}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/notices_page.templ`, Line: 170, Col: 30}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var12))
 				if templ_7745c5c3_Err != nil {
@@ -302,7 +302,7 @@ func NoticesList(notices []db.ListNoticesFilteredRow) templ.Component {
 				var templ_7745c5c3_Var13 string
 				templ_7745c5c3_Var13, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("%d", n.SemesterYear))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/notices_page.templ`, Line: 159, Col: 86}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/notices_page.templ`, Line: 170, Col: 86}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var13))
 				if templ_7745c5c3_Err != nil {
@@ -315,7 +315,7 @@ func NoticesList(notices []db.ListNoticesFilteredRow) templ.Component {
 				var templ_7745c5c3_Var14 string
 				templ_7745c5c3_Var14, templ_7745c5c3_Err = templ.JoinStringErrs(n.CreatedAt.Format("02/01/2006 a las 15:04"))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/notices_page.templ`, Line: 159, Col: 156}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/notices_page.templ`, Line: 170, Col: 156}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var14))
 				if templ_7745c5c3_Err != nil {
@@ -328,7 +328,7 @@ func NoticesList(notices []db.ListNoticesFilteredRow) templ.Component {
 				var templ_7745c5c3_Var15 string
 				templ_7745c5c3_Var15, templ_7745c5c3_Err = templruntime.NewAttributeExpression(n.IDNotice.String()).Resolve(ctx)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/notices_page.templ`, Line: 170, Col: 65}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/notices_page.templ`, Line: 181, Col: 65}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var15)
 				if templ_7745c5c3_Err != nil {
@@ -341,7 +341,7 @@ func NoticesList(notices []db.ListNoticesFilteredRow) templ.Component {
 				var templ_7745c5c3_Var16 string
 				templ_7745c5c3_Var16, templ_7745c5c3_Err = templ.JoinStringErrs(n.Message)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/notices_page.templ`, Line: 181, Col: 91}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/notices_page.templ`, Line: 192, Col: 91}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var16))
 				if templ_7745c5c3_Err != nil {

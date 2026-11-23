@@ -53,11 +53,6 @@ templ Layout(title string, activeTab string, professorName string) {
 					color: #ffffff;
 					margin-bottom: 0;
 				}
-				.brand-subtitle {
-					font-size: 0.82rem;
-					color: #93c5fd;
-					margin-bottom: 0;
-				}
 				.user-badge {
 					display: inline-flex;
 					align-items: center;
@@ -135,10 +130,7 @@ templ Layout(title string, activeTab string, professorName string) {
 						<a href="/" hx-get="/" hx-target="#main-content" hx-push-url="true" style="display: flex; align-items: center; text-decoration: none;">
 							<img src="/static/logo.png" alt="Logo NotifyEd" style="height: 44px; width: auto; object-fit: contain;"/>
 						</a>
-						<div>
-							<h1 class="brand-title"><a href="/" hx-get="/" hx-target="#main-content" hx-push-url="true" style="text-decoration: none; color: inherit;">NotifyEd</a></h1>
-							<p class="brand-subtitle">Sistema de Gestión y Avisos de Cursadas</p>
-						</div>
+						<h1 class="brand-title"><a href="/" hx-get="/" hx-target="#main-content" hx-push-url="true" style="text-decoration: none; color: inherit;">NotifyEd</a></h1>
 					</div>
 					<div class="user-badge">
 						<span class="htmx-indicator" style="font-size: 0.75rem; color: #93c5fd; margin-right: 0.25rem;">Cargando...</span>
@@ -157,7 +149,7 @@ templ Layout(title string, activeTab string, professorName string) {
 			</main>
 
 			<footer class="container" style="margin-top: 3rem; margin-bottom: 2rem; text-align: center; border-top: 1px solid #e2e8f0; padding-top: 1.5rem;">
-				<small style="color: #64748b;">NotifyEd &bull; Trabajo Práctico de Programación Web &bull; Server-Side Rendering con Go, templ y HTMX</small>
+				<small style="color: #64748b;">NotifyEd &bull; Sistema de avisos urgentes para docentes &bull; Aplicacion desarrollada por: Rocha Tomas y Rivolta Matias</small>
 			</footer>
 		</body>
 	</html>
