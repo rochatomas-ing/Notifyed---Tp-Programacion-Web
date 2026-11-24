@@ -30,6 +30,7 @@ Aplicación web desarrollada en **Go** (`net/http`) sobre **PostgreSQL** (`sqlc`
 ```bash
 git clone https://github.com/rochatomas-ing/Notifyed---Tp-Programacion-Web.git
 cd Notifyed---Tp-Programacion-Web
+git checkout tp6
 cp .env.example .env
 ```
 
@@ -38,13 +39,19 @@ cp .env.example .env
 ```bash
 make start
 ```
-
 Este comando ejecuta el flujo completo de arranque:
 1. Detiene contenedores previos y borra volúmenes (`make down`).
 2. Regenera código `sqlc` / `templ` y compila la aplicación (`make build`).
 3. Levanta PostgreSQL en Docker (`make up`).
 4. Espera a que la base de datos esté lista para aceptar conexiones (`make wait-db`).
 5. Inicia el servidor web (`make run`).
+
+### 3. Borrar contenedores luego de terminar
+
+```bash
+make clean 
+make down
+```
 
 Una vez iniciado, la aplicación queda disponible en **http://localhost:8080** (`GET /health` devuelve `200 OK` cuando la conexión a PostgreSQL está activa).
 
