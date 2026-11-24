@@ -169,4 +169,4 @@ requests.sh             Pruebas con curl heredadas de la API REST
 
 ## Documentación
 
-- [Documentación de la base de datos](https://docs.google.com/document/d/14D9cFFU1qXDRc5G7Rvl9kUP221paD0Ow21wZxIRfTSE/edit?usp=sharing)
+- [Documentación de la aplicacion](https://docs.google.com/document/d/1ClROcAwWaCKcLNSUg_azbeXEgIrkAvdvf7eCH33hjeg/edit?usp=sharing)
